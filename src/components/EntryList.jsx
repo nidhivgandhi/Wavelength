@@ -1,5 +1,29 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import EntryForm from './EntryForm.jsx'
+
+const CONFIRM_TIMEOUT_MS = 4000
+
+// Two-click delete: the first click asks for a second click; if none comes
+// within a few seconds (or focus leaves the button), it resets to "Delete".
+function DeleteButton({ onDelete }) {
+  const [confirming, setConfirming] = useState(false)
+
+  useEffect(() => {
+    if (!confirming) return
+    const timer = setTimeout(() => setConfirming(false), CONFIRM_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [confirming])
+
+  return (
+    <button
+      onClick={() => (confirming ? onDelete() : setConfirming(true))}
+      onBlur={() => setConfirming(false)}
+      style={confirming ? { color: 'white', background: 'crimson', borderColor: 'crimson' } : undefined}
+    >
+      {confirming ? 'Click again to delete permanently' : 'Delete'}
+    </button>
+  )
+}
 
 // Past symptom entries, newest first. Placeholder styling — swap for the real design.
 //
@@ -40,13 +64,7 @@ function EntryItem({ entry, onEdit, onDelete }) {
         {!editing && (
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
             <button onClick={() => setEditing(true)}>Edit</button>
-            <button
-              onClick={() => {
-                if (window.confirm('Delete this entry?')) onDelete(entry.id)
-              }}
-            >
-              Delete
-            </button>
+            <DeleteButton onDelete={() => onDelete(entry.id)} />
           </span>
         )}
       </div>
