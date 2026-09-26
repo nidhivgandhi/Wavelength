@@ -14,6 +14,7 @@ import { auth, isFirebaseConfigured } from './firebase.js'
 
 const LOCAL_KEY = 'wavelength.symptoms.v1'
 const TABLE = 'symptoms'
+const LEGACY_SUPABASE_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const REMOTE_COLUMNS = [
   'id',
@@ -83,6 +84,10 @@ function isMissingEnglishCopyColumn(error) {
   return ['42703', 'PGRST204'].includes(error?.code) && error.message?.includes('patient_input_en')
 }
 
+function needsAccountMigration(entry) {
+  return !entry.user_id || LEGACY_SUPABASE_USER_ID.test(entry.user_id)
+}
+
 // ---- localStorage ----------------------------------------------------------
 
 function readLocal() {
@@ -117,7 +122,13 @@ export async function saveEntry(entry) {
   let local = { ...entry, synced: false }
   upsertLocal(local)
 
-  if (!supabase) return { entry: local, remote: false }
+  if (!supabase) {
+    return {
+      entry: local,
+      remote: false,
+      error: isFirebaseConfigured() ? new Error('Account storage is not configured.') : undefined,
+    }
+  }
 
   try {
     const session = await ensureSession()
@@ -141,7 +152,11 @@ export async function listEntries() {
   const local = readLocal()
   if (!supabase) {
     const entries = isFirebaseConfigured() ? local.filter((entry) => entry.user_id === auth.currentUser?.uid) : local
-    return { entries: entries.sort(byNewest), remote: false, unownedLocalCount: local.filter((entry) => !entry.user_id).length }
+    return {
+      entries: entries.sort(byNewest),
+      remote: false,
+      unownedLocalCount: local.filter(needsAccountMigration).length,
+    }
   }
 
   let userId = null
@@ -167,11 +182,11 @@ export async function listEntries() {
       entry.user_id === userId && !entry.synced && !remoteIds.has(entry.id),
     )
     const merged = [...data.map((row) => ({ ...row, synced: true })), ...pending].sort(byNewest)
-    writeLocal([...merged, ...local.filter((entry) => !entry.user_id)])
+    writeLocal([...merged, ...local.filter(needsAccountMigration)])
     return {
       entries: merged,
       remote: true,
-      unownedLocalCount: local.filter((entry) => !entry.user_id).length,
+      unownedLocalCount: local.filter(needsAccountMigration).length,
     }
   } catch (error) {
     console.warn('[storage] Supabase read failed, using local cache', error)
@@ -182,7 +197,7 @@ export async function listEntries() {
       entries: cached.sort(byNewest),
       remote: false,
       error,
-      unownedLocalCount: local.filter((entry) => !entry.user_id).length,
+      unownedLocalCount: local.filter(needsAccountMigration).length,
     }
   }
 }
@@ -231,7 +246,7 @@ export async function migrateLocalEntriesToAccount() {
   if (!supabase) return { migrated: 0, error: new Error('Account storage is not configured.') }
 
   const local = readLocal()
-  const unowned = local.filter((entry) => !entry.user_id)
+  const unowned = local.filter(needsAccountMigration)
   if (unowned.length === 0) return { migrated: 0 }
 
   try {

@@ -22,9 +22,11 @@ function adminAuth() {
 
 export async function requireFirebaseUser(req, res) {
   if (!isFirebaseAdminConfigured()) {
-    // Not set up yet -> don't gate the endpoint (mirrors isFirebaseConfigured()
-    // on the client, in App.jsx). Set FIREBASE_PROJECT_ID and this starts
-    // requiring a valid ID token automatically, no other code changes needed.
+    if (process.env.NODE_ENV === 'production') {
+      res.status(503).json({ error: 'Authentication is not configured on the server.' })
+      return null
+    }
+
     return { uid: null, anonymous: true };
   }
 
