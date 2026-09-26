@@ -20,8 +20,10 @@ npm install
 cp .env.example .env   # then fill in GROQ_API_KEY
 ```
 
-- `npm run dev` — frontend only (Vite). The `/api/*` routes will 404 in this mode.
-- `vercel dev` — frontend + `/api/*` serverless functions together (needs `npm i -g vercel` and `vercel login` once). Use this to actually exercise `/api/translate`.
+- `npm run dev` — runs the frontend (Vite, port 5173) **and** a local API server (`server/dev-server.js`, port 3001) together. Vite proxies `/api/*` to the local server, so the browser can call `/api/translate` exactly as in production. This is what you want day-to-day.
+- `vercel dev` — alternative that runs the actual Vercel serverless function runtime instead of `server/dev-server.js` (needs `npm i -g vercel` and `vercel login` once). Only needed if you're debugging something Vercel-runtime-specific; `npm run dev` covers everything else.
+
+`server/dev-server.js` is dev-only scaffolding — it just wraps `api/translate.js` in an Express route so local dev doesn't require a Vercel account. Production (a real Vercel deploy) runs `api/translate.js` directly as a serverless function; that file is the source of truth, not the dev server.
 
 ## API contract: `POST /api/translate`
 

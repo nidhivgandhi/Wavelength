@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n client,api -c blue,green \"npm:dev:client\" \"npm:dev:api\"",
+    "dev:client": "vite",
+    "dev:api": "node server/dev-server.js",
     "build": "vite build",
     "preview": "vite preview",
     "test:translate": "node scripts/test-translate.mjs"
@@ -15,7 +17,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^10.0.5",
     "dotenv": "^18.0.4",
+    "express": "^5.2.1",
     "vite": "^5.4.1"
   }
 }
