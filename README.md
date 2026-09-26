@@ -104,13 +104,14 @@ Groq's free-tier rate limits are account-specific — check the Limits page at h
 Check the wiring at http://localhost:5173/test.html while `npm run dev` is running.
 
 - [`src/lib/storage.js`](src/lib/storage.js) — `createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`. Writes land in localStorage first, then Supabase; anything that fails to upload stays `synced: false` and is pushed by `syncPending()`.
-- [`src/lib/intake.js`](src/lib/intake.js) — `submitIntake({ patientInput, inputMethod })`: translate, then save. The entry is saved even if translation fails.
-- [`src/hooks/useEntries.js`](src/hooks/useEntries.js) — React hook: `{ entries, loading, notice, submit, remove }`. Use this from any UI (typed or voice input).
+- [`src/lib/intake.js`](src/lib/intake.js) — `submitIntake` / `updateIntake`: translate the symptom text, then save. The entry is saved even if translation fails.
+- [`src/hooks/useEntries.js`](src/hooks/useEntries.js) — React hook: `{ entries, loading, notice, submit, edit, remove }`. Use this from any UI. `submit({ patientInput, inputMethod })` / `edit(entry, { patientInput, inputMethod })`; editing re-translates when the text changes.
+- [`src/components/EntryForm.jsx`](src/components/EntryForm.jsx) / [`EntryList.jsx`](src/components/EntryList.jsx) — symptom text box + Complete log / Click to speak buttons (also used for editing) and the past-entries list (text + clinical phrasing). Placeholder styling.
 
-## Storage (Supabase + localStorage fallback)
+## Voice input
 
-1. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
-2. Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**.
-3. Put the project URL and anon key in `.env` (see `.env.example`).
+[`src/hooks/useSpeechRecognition.js`](src/hooks/useSpeechRecognition.js) wraps the browser's built-in Web Speech API — no API key or extra service. Click **Click to speak** (next to Complete log) to start, **Stop listening** to stop; what you say is added to the Symptoms text live, and the entry is saved with `input_method: 'voice'`.
 
-All reads/writes go through [`src/lib/storage.js`](src/lib/storage.js) (`createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`). Writes land in localStorage first, then Supabase; anything that fails to upload stays marked `synced: false` and is pushed by `syncPending()`.
+- Works in **Chrome, Edge, Safari**; **not Firefox** (the button is replaced by a notice there).
+- Needs `localhost` or HTTPS, microphone permission, and an internet connection.
+- Privacy: Chrome/Edge send the audio to Google/Microsoft for recognition. Worth stating in the UI given this is health data.

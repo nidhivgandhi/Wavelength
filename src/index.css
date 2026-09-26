@@ -6,3 +6,9 @@
 body {
   margin: 0;
 }
+
+/* Voice-to-text button — src/components/VoiceBox.jsx */
+.voice-unsupported {
+  font-size: 13px;
+  color: #666;
+}

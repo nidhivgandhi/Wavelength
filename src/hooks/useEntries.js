@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { deleteEntry, listEntries, syncPending } from '../lib/storage.js'
-import { submitIntake } from '../lib/intake.js'
+import { submitIntake, updateIntake } from '../lib/intake.js'
 
-// Symptom entries for the current user, plus submit/delete.
+// Symptom entries for the current user, plus submit/edit/delete.
 //
-//   const { entries, loading, notice, pendingCount, submit, remove } = useEntries()
+//   const { entries, loading, notice, pendingCount, submit, edit, remove } = useEntries()
 //   const result = await submit({ patientInput, inputMethod: 'text' | 'voice' })
+//   const result = await edit(entry, { patientInput, inputMethod })
 //
 // Loads on mount, and re-syncs entries saved offline whenever the browser
 // comes back online.
@@ -35,6 +36,13 @@ export function useEntries() {
     return result
   }, [])
 
+  const edit = useCallback(async (entry, input) => {
+    const result = await updateIntake(entry, input)
+    setEntries((prev) => prev.map((e) => (e.id === result.entry.id ? result.entry : e)))
+    setNotice(result.saveError ? 'Saved on this device only — it will sync when the connection is back.' : null)
+    return result
+  }, [])
+
   const remove = useCallback(async (id) => {
     setEntries((prev) => prev.filter((e) => e.id !== id))
     const { error } = await deleteEntry(id)
@@ -43,5 +51,5 @@ export function useEntries() {
 
   const pendingCount = entries.filter((e) => !e.synced).length
 
-  return { entries, loading, notice, pendingCount, submit, remove, refresh }
+  return { entries, loading, notice, pendingCount, submit, edit, remove, refresh }
 }

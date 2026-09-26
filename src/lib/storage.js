@@ -29,16 +29,24 @@ export const isRemoteEnabled = Boolean(supabase)
 
 // ---- Building entries ------------------------------------------------------
 
+// The entry fields that come from an /api/translate response (all cleared when
+// translation is null).
+export function translationFields(translation) {
+  return {
+    clinical_phrasing: translation?.clinical_phrasing ?? null,
+    why_it_matters: translation?.why_it_matters ?? null,
+    follow_up_question: translation?.follow_up_question ?? null,
+    emergency: Boolean(translation?.emergency),
+  }
+}
+
 export function createEntry({ patientInput, inputMethod = 'text', translation = null }) {
   return {
     id: crypto.randomUUID(),
     created_at: new Date().toISOString(),
     patient_input: patientInput,
     input_method: inputMethod,
-    clinical_phrasing: translation?.clinical_phrasing ?? null,
-    why_it_matters: translation?.why_it_matters ?? null,
-    follow_up_question: translation?.follow_up_question ?? null,
-    emergency: Boolean(translation?.emergency),
+    ...translationFields(translation),
     synced: false,
   }
 }
