@@ -99,6 +99,30 @@ Groq's free-tier rate limits are account-specific — check the Limits page at h
 
 1. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
 2. Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**.
-3. Put the project URL and anon key in `.env` (see `.env.example`).
+3. Put the project URL (base URL only — no `/rest/v1/`) and anon key in `.env` (see `.env.example`).
 
-All reads/writes go through [`src/lib/storage.js`](src/lib/storage.js) (`createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`). Writes land in localStorage first, then Supabase; anything that fails to upload stays marked `synced: false` and is pushed by `syncPending()`.
+Check the wiring at http://localhost:5173/test.html while `npm run dev` is running.
+
+- [`src/lib/storage.js`](src/lib/storage.js) — `createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`. Writes land in localStorage first, then Supabase; anything that fails to upload stays `synced: false` and is pushed by `syncPending()`.
+- [`src/lib/intake.js`](src/lib/intake.js) — `submitIntake` / `updateIntake`: translate the symptom text, then save. The entry is saved even if translation fails.
+- [`src/hooks/useEntries.js`](src/hooks/useEntries.js) — React hook: `{ entries, loading, notice, submit, edit, remove }`. Use this from any UI. `submit({ patientInput, inputMethod })` / `edit(entry, { patientInput, inputMethod })`; editing re-translates when the text changes.
+- [`src/components/EntryForm.jsx`](src/components/EntryForm.jsx) / [`EntryList.jsx`](src/components/EntryList.jsx) — symptom text box + Complete log / Click to speak buttons (also used for editing) and the past-entries list (text + clinical phrasing). Placeholder styling.
+
+## Voice input
+
+[`src/hooks/useSpeechRecognition.js`](src/hooks/useSpeechRecognition.js) wraps the browser's built-in Web Speech API — no API key or extra service. Click **Click to speak** (next to Complete log) to start, **Stop listening** to stop; what you say is added to the Symptoms text live, and the entry is saved with `input_method: 'voice'`.
+
+- Works in **Chrome, Edge, Safari**; **not Firefox** (the button is replaced by a notice there).
+- Needs `localhost` or HTTPS, microphone permission, and an internet connection.
+- Privacy: Chrome/Edge send the audio to Google/Microsoft for recognition. Worth stating in the UI given this is health data.
+
+## Languages
+
+A picker in the header switches the app's buttons/labels **and** the speech-recognition language: English, Español, हिन्दी, 中文. The choice is remembered per browser; first visit follows the browser's language.
+
+- Text lives in [`src/i18n/strings.js`](src/i18n/strings.js). To add a language, add it to `LANGUAGES` and add a block to `STRINGS` (missing keys fall back to English). Non-English text was machine-drafted — needs a native-speaker check.
+- Components get text via `const { t, locale } = useLanguage()` (`src/i18n/LanguageContext.jsx`); the app must be wrapped in `<LanguageProvider>` (done in `main.jsx`).
+- Patients can type/speak in any of these languages; `/api/translate` returns the clinical phrasing in **English** (checked with Spanish and Chinese input), which is what the clinician reads.
+- **English copy:** when the UI language isn't English, each entry's words are also translated to English via `POST /api/translate-english` (`{ text }` → `{ english_text, emergency }`, [`api/translate-english.js`](api/translate-english.js)) and saved as `patient_input_en` — run [`supabase/add_english_copy.sql`](supabase/add_english_copy.sql) once. Entries show the original plus "In English: …".
+- **Emergency check for other languages:** `api/lib/emergencyCheck.js` only matches English phrases, so on its own "Tengo dolor de pecho y no puedo respirar" / "我胸口疼，喘不过气来" return `emergency: false` from `/api/translate`. `/api/translate-english` runs the same check on the English copy, and the app shows the urgent-care alert if either flags it. This depends on the model's translation, so native-language patterns in `emergencyCheck.js` would still be a good addition.
+- **Low-detail hint:** when the clinical phrasing says there isn't enough detail, the entry shows what to add (the API's follow-up question in English; a translated generic hint otherwise).
