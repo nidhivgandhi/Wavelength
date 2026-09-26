@@ -66,3 +66,13 @@ Error responses use `{ "error": "message" }` with a 4xx/5xx status.
 | Name | Where | Notes |
 |---|---|---|
 | `GROQ_API_KEY` | server only, `.env` | Never prefix with `VITE_` — that would expose it in the client bundle. |
+| `VITE_SUPABASE_URL` | client, `.env` | Optional. Blank → app uses localStorage only. |
+| `VITE_SUPABASE_ANON_KEY` | client, `.env` | Public anon key; RLS protects the data. Never use the `service_role` key here. |
+
+## Storage (Supabase + localStorage fallback)
+
+1. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
+2. Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**.
+3. Put the project URL and anon key in `.env` (see `.env.example`).
+
+All reads/writes go through [`src/lib/storage.js`](src/lib/storage.js) (`createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`). Writes land in localStorage first, then Supabase; anything that fails to upload stays marked `synced: false` and is pushed by `syncPending()`.
