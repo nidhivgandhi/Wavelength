@@ -8,6 +8,7 @@ import { supabase, ensureSession } from './supabase.js'
 //
 // Entry shape (matches the `symptoms` table and the /api/translate response):
 //   { id, created_at, patient_input, input_method: 'text' | 'voice',
+//     patient_input_en,   <- English copy for non-English entries (supabase/add_english_copy.sql)
 //     clinical_phrasing, why_it_matters, follow_up_question, emergency,
 //     synced }   <- `synced` is local-only, never sent to Supabase
 
@@ -19,6 +20,7 @@ const REMOTE_COLUMNS = [
   'created_at',
   'patient_input',
   'input_method',
+  'patient_input_en',
   'clinical_phrasing',
   'why_it_matters',
   'follow_up_question',
@@ -40,12 +42,13 @@ export function translationFields(translation) {
   }
 }
 
-export function createEntry({ patientInput, inputMethod = 'text', translation = null }) {
+export function createEntry({ patientInput, inputMethod = 'text', patientInputEn = null, translation = null }) {
   return {
     id: crypto.randomUUID(),
     created_at: new Date().toISOString(),
     patient_input: patientInput,
     input_method: inputMethod,
+    patient_input_en: patientInputEn,
     ...translationFields(translation),
     synced: false,
   }

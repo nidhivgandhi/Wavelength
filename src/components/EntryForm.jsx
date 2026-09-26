@@ -1,8 +1,13 @@
 import { useId, useRef, useState } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition.js'
+import { useLanguage } from '../i18n/LanguageContext.jsx'
+import { STRINGS } from '../i18n/strings.js'
 import VoiceBox from './VoiceBox.jsx'
 
+const KNOWN_VOICE_ERRORS = new Set(Object.keys(STRINGS.en.voiceErrors))
+
 // Symptom text box + "Click to speak" button, used for new entries and for editing.
+// Speech is recognized in the language picked in <LanguagePicker>.
 // Placeholder styling — swap for the real design.
 //
 // onSubmit({ patientInput, inputMethod }) — pass to useEntries().submit or wrap
@@ -11,10 +16,11 @@ export default function EntryForm({
   initialText = '',
   onSubmit,
   onCancel,
-  submitLabel = 'Save',
-  busyLabel = 'Saving…',
+  submitLabel,
+  busyLabel,
   resetAfterSubmit = false,
 }) {
+  const { t, locale } = useLanguage()
   const [text, setText] = useState(initialText)
   const [usedVoice, setUsedVoice] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -27,6 +33,7 @@ export default function EntryForm({
       const before = textBeforeDictation.current.trimEnd()
       setText(before ? `${before} ${words}` : words)
     },
+    lang: locale,
   })
 
   function startDictation() {
@@ -53,7 +60,7 @@ export default function EntryForm({
   return (
     <form onSubmit={handleSubmit}>
       <label htmlFor={textId} style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-        Symptoms
+        {t('symptomsLabel')}
       </label>
       <textarea
         id={textId}
@@ -63,13 +70,13 @@ export default function EntryForm({
           if (!e.target.value) setUsedVoice(false)
         }}
         readOnly={speech.listening}
-        placeholder="Describe what you're experiencing…"
+        placeholder={t('symptomsPlaceholder')}
         rows={4}
         style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '1rem' }}
       />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
         <button type="submit" disabled={busy || !text.trim()}>
-          {busy ? busyLabel : submitLabel}
+          {busy ? busyLabel ?? t('saving') : submitLabel ?? t('saveChanges')}
         </button>
         <VoiceBox
           supported={speech.supported}
@@ -78,14 +85,20 @@ export default function EntryForm({
           onStop={speech.stop}
           disabled={busy}
         />
-        {speech.listening && <small style={{ color: 'crimson' }}>Listening…</small>}
+        {speech.listening && <small style={{ color: 'crimson' }}>{t('listening')}</small>}
         {onCancel && (
           <button type="button" onClick={onCancel} disabled={busy}>
-            Cancel
+            {t('cancel')}
           </button>
         )}
       </div>
-      {speech.error && <small style={{ color: 'crimson' }}>{speech.error}</small>}
+      {speech.error && (
+        <small style={{ color: 'crimson' }}>
+          {KNOWN_VOICE_ERRORS.has(speech.error)
+            ? t(`voiceErrors.${speech.error}`)
+            : t('voiceErrors.other', { code: speech.error })}
+        </small>
+      )}
     </form>
   )
 }

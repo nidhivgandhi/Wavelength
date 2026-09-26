@@ -6,19 +6,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 const SpeechRecognition =
   typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null
 
-const ERROR_MESSAGES = {
-  'not-allowed': 'Microphone access was blocked. Allow it in the browser address bar and try again.',
-  'service-not-allowed': 'Microphone access was blocked. Allow it in the browser address bar and try again.',
-  'no-speech': "Didn't hear anything — try again and speak after clicking the mic.",
-  'audio-capture': 'No microphone found.',
-  network: 'Voice input needs an internet connection.',
-}
-
-//   const { supported, listening, error, start, stop, cancel } = useSpeechRecognition({ onTranscript })
+//   const { supported, listening, error, start, stop, cancel } =
+//     useSpeechRecognition({ onTranscript, lang: 'es-US' })
 //
 // onTranscript(text) is called with the full transcript of the current
-// session (final + in-progress words) every time it changes.
-export function useSpeechRecognition({ onTranscript }) {
+// session (final + in-progress words) every time it changes. `lang` is a BCP-47
+// locale for recognition. `error` is the Web Speech error code (e.g.
+// 'not-allowed', 'no-speech') so the UI can show it in its own language;
+// 'service-not-allowed' is reported as 'not-allowed'.
+export function useSpeechRecognition({ onTranscript, lang }) {
   const [listening, setListening] = useState(false)
   const [error, setError] = useState(null)
   const recognitionRef = useRef(null)
@@ -33,7 +29,7 @@ export function useSpeechRecognition({ onTranscript }) {
     setError(null)
 
     const recognition = new SpeechRecognition()
-    recognition.lang = navigator.language || 'en-US'
+    recognition.lang = lang || navigator.language || 'en-US'
     recognition.continuous = true
     recognition.interimResults = true
 
@@ -44,7 +40,7 @@ export function useSpeechRecognition({ onTranscript }) {
     }
     recognition.onerror = (event) => {
       if (event.error === 'aborted') return
-      setError(ERROR_MESSAGES[event.error] || `Voice input error: ${event.error}`)
+      setError(event.error === 'service-not-allowed' ? 'not-allowed' : event.error)
     }
     recognition.onend = () => {
       recognitionRef.current = null
@@ -54,7 +50,7 @@ export function useSpeechRecognition({ onTranscript }) {
     recognitionRef.current = recognition
     recognition.start()
     setListening(true)
-  }, [])
+  }, [lang])
 
   // Stop listening; words still being processed are delivered via onTranscript.
   const stop = useCallback(() => {

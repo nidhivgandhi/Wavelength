@@ -115,3 +115,14 @@ Check the wiring at http://localhost:5173/test.html while `npm run dev` is runni
 - Works in **Chrome, Edge, Safari**; **not Firefox** (the button is replaced by a notice there).
 - Needs `localhost` or HTTPS, microphone permission, and an internet connection.
 - Privacy: Chrome/Edge send the audio to Google/Microsoft for recognition. Worth stating in the UI given this is health data.
+
+## Languages
+
+A picker in the header switches the app's buttons/labels **and** the speech-recognition language: English, Español, हिन्दी, 中文. The choice is remembered per browser; first visit follows the browser's language.
+
+- Text lives in [`src/i18n/strings.js`](src/i18n/strings.js). To add a language, add it to `LANGUAGES` and add a block to `STRINGS` (missing keys fall back to English). Non-English text was machine-drafted — needs a native-speaker check.
+- Components get text via `const { t, locale } = useLanguage()` (`src/i18n/LanguageContext.jsx`); the app must be wrapped in `<LanguageProvider>` (done in `main.jsx`).
+- Patients can type/speak in any of these languages; `/api/translate` returns the clinical phrasing in **English** (checked with Spanish and Chinese input), which is what the clinician reads.
+- **English copy:** when the UI language isn't English, each entry's words are also translated to English via `POST /api/translate-english` (`{ text }` → `{ english_text, emergency }`, [`api/translate-english.js`](api/translate-english.js)) and saved as `patient_input_en` — run [`supabase/add_english_copy.sql`](supabase/add_english_copy.sql) once. Entries show the original plus "In English: …".
+- **Emergency check for other languages:** `api/lib/emergencyCheck.js` only matches English phrases, so on its own "Tengo dolor de pecho y no puedo respirar" / "我胸口疼，喘不过气来" return `emergency: false` from `/api/translate`. `/api/translate-english` runs the same check on the English copy, and the app shows the urgent-care alert if either flags it. This depends on the model's translation, so native-language patterns in `emergencyCheck.js` would still be a good addition.
+- **Low-detail hint:** when the clinical phrasing says there isn't enough detail, the entry shows what to add (the API's follow-up question in English; a translated generic hint otherwise).
