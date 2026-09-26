@@ -1,9 +1,10 @@
 import { createEntry, saveEntry, translationFields } from './storage.js'
+import { authedFetch } from './firebase.js'
 
 // POST /api/translate -> { clinical_phrasing, why_it_matters, follow_up_question, emergency }
 // Throws with the API's { error } message on a non-2xx response.
 export async function translate(patientInput) {
-  const res = await fetch('/api/translate', {
+  const res = await authedFetch('/api/translate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ patientInput }),

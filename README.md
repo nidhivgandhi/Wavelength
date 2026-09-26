@@ -11,13 +11,15 @@ fast inference.
 
 - Frontend: Vite + React (`src/`)
 - Backend: Vercel serverless functions (`api/`)
+- Auth: Firebase Authentication
+- Storage: localStorage with optional Supabase sync
 - Model: GroqCloud (OpenAI-compatible endpoint)
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env   # then fill in GROQ_API_KEY
+cp .env.example .env   # then fill in Groq + Firebase values
 ```
 
 - `npm run dev` — runs the frontend (Vite, port 5173) **and** a local API server (`server/dev-server.js`, port 3001) together. Vite proxies `/api/*` to the local server, so the browser can call `/api/translate` exactly as in production. This is what you want day-to-day.
@@ -28,6 +30,16 @@ cp .env.example .env   # then fill in GROQ_API_KEY
 ## API contract: `POST /api/translate`
 
 This contract is locked and now wired to the real Groq call (no longer a stub).
+The route is protected by Firebase Auth. Clients must send a Firebase ID token:
+
+```http
+Authorization: Bearer <firebase-id-token>
+```
+
+The frontend uses `authedFetch()` from `src/lib/firebase.js` so API calls include
+the current user's ID token automatically. The backend verifies that token with
+Firebase Admin and uses the verified `uid`; never send or trust `userId` in the
+request body/query for ownership.
 
 **Request**
 
@@ -58,7 +70,22 @@ override the safety rules (see `api/lib/systemPrompt.js`).
 | `follow_up_question` | string | One specific clarifying question — used when input is vague/incomplete. |
 | `emergency` | boolean | `true` if a hardcoded keyword safety check (not the model) flagged the input as a possible emergency. This is always set by `api/lib/emergencyCheck.js` — never by the model, structurally, not just by instruction. When `true`, the model is never called at all; the frontend should show an urgent-care message (`clinical_phrasing` already contains a 911/ER directive) and treat the other fields as not the focus. |
 
-Error responses use `{ "error": "message" }` with a 4xx/5xx status (400 bad input, 429 rate limited, 502 upstream/malformed, 504 timeout, 500 unexpected).
+Error responses use `{ "error": "message" }` with a 4xx/5xx status (401 unauthenticated, 400 bad input, 429 rate limited, 502 upstream/malformed, 503 missing Firebase Admin config, 504 timeout, 500 unexpected).
+
+## Firebase setup
+
+In Firebase Console:
+
+1. Create/select a Firebase project.
+2. Enable Authentication > Sign-in method > Email/Password.
+3. Enable Authentication > Sign-in method > Google.
+4. Add local and deployed domains under Authentication > Settings > Authorized domains:
+   - `localhost`
+   - your Vercel production domain
+5. Copy the web app config into `.env` as the `VITE_FIREBASE_*` values.
+6. Set `FIREBASE_PROJECT_ID` on the server. It must match `VITE_FIREBASE_PROJECT_ID`.
+
+After changing `.env`, restart `npm run dev`.
 
 ## How it works
 
@@ -68,13 +95,11 @@ Error responses use `{ "error": "message" }` with a 4xx/5xx status (400 bad inpu
 
 **Prompt boundary ("organize, don't diagnose"):** the system prompt hard-blocks naming/implying any condition or diagnosis and diagnostic-certainty language ("you have," "this is," "this indicates"), forbids reassurance/alarm, and requires neutral clinical-axis phrasing (frequency, duration, functional impact, onset). For vague/short input, it's instructed to ask a clarifying `follow_up_question` rather than guess.
 
-**Model note:** `llama-3.3-70b-versatile` (referenced in some Groq examples/docs) was **not available** on this project's API key — verify with `GET https://api.groq.com/openai/v1/models` against your own key before assuming a model ID, since access varies by account. `openai/gpt-oss-20b`/`120b` were available and support strict Structured Outputs; `20b` is used for speed (swap to `120b` in `groqClient.js` if quality matters more than latency).
-
-**Reasoning-model gotcha:** `gpt-oss` models spend part of their token budget on internal reasoning before the JSON answer, which counts against `max_completion_tokens` — too low a limit truncates before valid JSON is produced. Fixed here with `reasoning_effort: "low"` + `reasoning_format: "hidden"` + a generous token budget. Worth knowing if you ever see `json_validate_failed` / "max completion tokens reached" errors from Groq.
-
 ## Testing
 
-`npm run test:translate` runs 15 hand-written cases against the live endpoint (real Groq calls) covering: clear well-articulated input, vague/rambling input, near-miss emergency phrasing (concerning but shouldn't trip the hardcoded check), genuine emergency phrasing (should trip it, 0 model calls), and empty/minimal input. All 15 currently pass manual review for: no diagnostic language, useful/neutral clinical phrasing, specific follow-up questions, and valid JSON. The suite also naturally exercised the 429 rate-limit path and a malformed-JSON path (during debugging) — both returned the intended fallback error shape instead of crashing.
+`npm run test:translate` is a manual handler harness for the Groq prompt cases.
+The browser flow now calls the protected route with `authedFetch()`, so full
+end-to-end API testing requires signing in through Firebase first.
 
 Groq's free-tier rate limits are account-specific — check the Limits page at https://console.groq.com before a demo. Rate-limit responses include `retry-after` / `x-ratelimit-*` headers, which `api/lib/groqClient.js` reads and surfaces as a 429 with a `Retry-After` header.
 
@@ -84,16 +109,25 @@ Groq's free-tier rate limits are account-specific — check the Limits page at h
 - [x] Hardcoded emergency-keyword check (runs before any model call)
 - [x] Real system prompt ("organize, don't diagnose") wired into the endpoint
 - [x] Strict Groq Structured Outputs + manual-parse fallback
-- [x] 15-case test suite run and manually reviewed; prompt iterated once (fixed first-person phrasing on vague input)
 - [x] Error handling for API failures / rate limits / timeouts / malformed JSON
+- [x] Firebase Auth gate and protected API token verification
+- [x] localStorage with optional Supabase sync
 
 ## Environment variables
 
 | Name | Where | Notes |
 |---|---|---|
 | `GROQ_API_KEY` | server only, `.env` | Never prefix with `VITE_` — that would expose it in the client bundle. |
-| `VITE_SUPABASE_URL` | client, `.env` | Optional. Blank → app uses localStorage only. |
-| `VITE_SUPABASE_ANON_KEY` | client, `.env` | Public anon key; RLS protects the data. Never use the `service_role` key here. |
+| `VITE_FIREBASE_API_KEY` | browser, `.env` | Firebase web app API key. |
+| `VITE_FIREBASE_AUTH_DOMAIN` | browser, `.env` | Usually `<project>.firebaseapp.com`. |
+| `VITE_FIREBASE_PROJECT_ID` | browser, `.env` | Must match your Firebase project. |
+| `VITE_FIREBASE_STORAGE_BUCKET` | browser, `.env` | From Firebase web app config. |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | browser, `.env` | From Firebase web app config. |
+| `VITE_FIREBASE_APP_ID` | browser, `.env` | From Firebase web app config. |
+| `VITE_FIREBASE_MEASUREMENT_ID` | browser, `.env` | Optional if unused. |
+| `FIREBASE_PROJECT_ID` | server only, `.env` | Used by Firebase Admin to verify ID tokens. Must match `VITE_FIREBASE_PROJECT_ID`. |
+| `VITE_SUPABASE_URL` | browser, `.env` | Optional. Blank means the app uses localStorage only. |
+| `VITE_SUPABASE_ANON_KEY` | browser, `.env` | Public anon key; RLS protects the data. Never use the `service_role` key here. |
 
 ## Storage (Supabase + localStorage fallback)
 

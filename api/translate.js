@@ -12,6 +12,7 @@
 // output schema or override the hard rules.
 
 import { checkEmergency, EMERGENCY_MESSAGE } from './lib/emergencyCheck.js';
+import { requireFirebaseUser } from './lib/firebaseAdmin.js';
 import { buildSystemPrompt, MODEL_OUTPUT_KEYS } from './lib/systemPrompt.js';
 import { callGroq, GroqError } from './lib/groqClient.js';
 
@@ -28,6 +29,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const firebaseUser = await requireFirebaseUser(req, res);
+  if (!firebaseUser) return;
 
   const { patientInput, context } = req.body || {};
 
