@@ -87,7 +87,7 @@ export function extractJson(raw) {
  * rate limits, malformed output, etc.) — it never returns a partial/guessed
  * result.
  */
-export async function callGroq({ systemPrompt, userInput }) {
+export async function callGroq({ systemPrompt, userInput, responseFormat = RESPONSE_SCHEMA, maxCompletionTokens = 800 }) {
   if (!process.env.GROQ_API_KEY) {
     throw new GroqError('GROQ_API_KEY is not set', { code: 'missing_api_key' });
   }
@@ -109,7 +109,7 @@ export async function callGroq({ systemPrompt, userInput }) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userInput },
         ],
-        response_format: RESPONSE_SCHEMA,
+        response_format: responseFormat,
         temperature: 0.3,
         // gpt-oss models spend part of the token budget on internal
         // reasoning before emitting the JSON answer, which counts against
@@ -121,7 +121,7 @@ export async function callGroq({ systemPrompt, userInput }) {
         // reasoning models with JSON mode.
         reasoning_effort: 'low',
         reasoning_format: 'hidden',
-        max_completion_tokens: 800,
+        max_completion_tokens: maxCompletionTokens,
       }),
       signal: controller.signal,
     });

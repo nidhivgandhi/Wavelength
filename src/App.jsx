@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth'
 import EntryForm from './components/EntryForm.jsx'
 import EntryList from './components/EntryList.jsx'
+import AnalysisView from './components/AnalysisView.jsx'
 import LanguagePicker from './components/LanguagePicker.jsx'
 import { useEntries } from './hooks/useEntries.js'
 import { useLanguage } from './i18n/LanguageContext.jsx'
@@ -346,6 +347,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
 // header just omits the identity line and the sign-out button in that case.
 function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   const { t } = useLanguage()
+  const [activeView, setActiveView] = useState('log')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const { entries, loading, notice, submit, edit, remove } = useEntries()
@@ -364,10 +366,28 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
       <header className="app-header">
         <div>
           <p className="eyebrow">Wavelength</p>
-          <h1>Symptom log</h1>
+          <h1>{activeView === 'analysis' ? t('analysisTitle') : t('symptomLog')}</h1>
           {user && <p>Signed in as {user.email || user.displayName || user.uid}</p>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="app-header-controls">
+          <nav className="view-switch" aria-label={t('mainNavigation')}>
+            <button
+              aria-pressed={activeView === 'log'}
+              className={activeView === 'log' ? 'active' : ''}
+              onClick={() => setActiveView('log')}
+              type="button"
+            >
+              {t('symptomLog')}
+            </button>
+            <button
+              aria-pressed={activeView === 'analysis'}
+              className={activeView === 'analysis' ? 'active' : ''}
+              onClick={() => setActiveView('analysis')}
+              type="button"
+            >
+              {t('analysis')}
+            </button>
+          </nav>
           <LanguagePicker />
           {onSignOut && (
             <button className="secondary-action" onClick={onSignOut} type="button">
@@ -377,29 +397,35 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
         </div>
       </header>
 
-      <section className="entry-panel">
-        <EntryForm onSubmit={handleSubmit} submitLabel={t('completeLog')} busyLabel={t('saving')} resetAfterSubmit />
+      {activeView === 'analysis' ? (
+        <AnalysisView entries={entries} loading={loading} />
+      ) : (
+        <>
+          <section className="entry-panel">
+            <EntryForm onSubmit={handleSubmit} submitLabel={t('completeLog')} busyLabel={t('saving')} resetAfterSubmit />
 
-        {error && <p className="error-text">{error}</p>}
+            {error && <p className="error-text">{error}</p>}
 
-        {result?.emergency && (
-          <div className="urgent-card" role="alert">
-            <strong>{t('emergencyTitle')}</strong>
-            <p>{t('emergencyAction')}</p>
-            {result.clinical_phrasing && (
-              <p lang="en" style={{ margin: '0.5rem 0 0' }}>
-                {result.clinical_phrasing}
-              </p>
+            {result?.emergency && (
+              <div className="urgent-card" role="alert">
+                <strong>{t('emergencyTitle')}</strong>
+                <p>{t('emergencyAction')}</p>
+                {result.clinical_phrasing && (
+                  <p lang="en" style={{ margin: '0.5rem 0 0' }}>
+                    {result.clinical_phrasing}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-        )}
-      </section>
+          </section>
 
-      <section className="entry-panel">
-        <h2>{t('pastEntries')}</h2>
-        {notice && <p className="notice-text">{t(`notices.${notice}`)}</p>}
-        <EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} />
-      </section>
+          <section className="entry-panel">
+            <h2>{t('pastEntries')}</h2>
+            {notice && <p className="notice-text">{t(`notices.${notice}`)}</p>}
+            <EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} />
+          </section>
+        </>
+      )}
     </main>
   )
 }

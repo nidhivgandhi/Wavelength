@@ -14,12 +14,14 @@ import 'dotenv/config';
 import express from 'express';
 import translateHandler from '../api/translate.js';
 import translateEnglishHandler from '../api/translate-english.js';
+import analyzeHandler from '../api/analyze.js';
 
 const app = express();
 app.use(express.json());
 
 app.post('/api/translate', (req, res) => translateHandler(req, res));
 app.post('/api/translate-english', (req, res) => translateEnglishHandler(req, res));
+app.post('/api/analyze', (req, res) => analyzeHandler(req, res));
 
 const PORT = process.env.API_PORT || 3001;
 app.listen(PORT, () => {

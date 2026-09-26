@@ -26,6 +26,7 @@ const REMOTE_COLUMNS = [
   'follow_up_question',
   'emergency',
 ]
+const LEGACY_REMOTE_COLUMNS = REMOTE_COLUMNS.filter((column) => column !== 'patient_input_en')
 
 export const isRemoteEnabled = Boolean(supabase)
 
@@ -63,6 +64,10 @@ function toRow(entry) {
 
 function byNewest(a, b) {
   return new Date(b.created_at) - new Date(a.created_at)
+}
+
+function isMissingEnglishCopyColumn(error) {
+  return ['42703', 'PGRST204'].includes(error?.code) && error.message?.includes('patient_input_en')
 }
 
 // ---- localStorage ----------------------------------------------------------
@@ -122,10 +127,17 @@ export async function listEntries() {
 
   try {
     await ensureSession()
-    const { data, error } = await supabase
+    let result = await supabase
       .from(TABLE)
       .select(REMOTE_COLUMNS.join(','))
       .order('created_at', { ascending: false })
+    if (isMissingEnglishCopyColumn(result.error)) {
+      result = await supabase
+        .from(TABLE)
+        .select(LEGACY_REMOTE_COLUMNS.join(','))
+        .order('created_at', { ascending: false })
+    }
+    const { data, error } = result
     if (error) throw error
 
     const remoteIds = new Set(data.map((row) => row.id))

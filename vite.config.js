@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const apiTarget = process.env.API_PROXY_TARGET || 'http://localhost:3001'
+
 // `npm run dev` starts this (Vite) alongside server/dev-server.js (a plain
 // Express server wrapping the real api/translate.js handler) — see the
 // "dev" script in package.json. This proxy sends /api/* requests from the
@@ -10,7 +12,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:3001',
+      '/api': apiTarget,
     },
   },
 })
