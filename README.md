@@ -118,10 +118,13 @@ Check the wiring at http://localhost:5173/test.html while `npm run dev` is runni
 
 ## Languages
 
-A picker in the header switches the app's buttons/labels **and** the speech-recognition language: English, Español, हिन्दी, 中文. The choice is remembered per browser; first visit follows the browser's language.
+A picker in the header switches the app's buttons/labels **and** the speech-recognition language. 21 languages: the 20 most-spoken in US homes plus Tamil (list in [`src/i18n/languages.js`](src/i18n/languages.js)). Arabic, Urdu and Persian switch the page to right-to-left. Haitian Creole has no browser speech recognition, so it's typing only. The choice is remembered per browser; first visit follows the browser's language.
 
-- Text lives in [`src/i18n/strings.js`](src/i18n/strings.js). To add a language, add it to `LANGUAGES` and add a block to `STRINGS` (missing keys fall back to English). Non-English text was machine-drafted — needs a native-speaker check.
-- Components get text via `const { t, locale } = useLanguage()` (`src/i18n/LanguageContext.jsx`); the app must be wrapped in `<LanguageProvider>` (done in `main.jsx`).
+- **Button text** lives in [`src/i18n/locales/`](src/i18n/locales/), one flat JSON file per language (`en.json` is the source). A missing file or key falls back to English.
+- **Adding a language:** add one line to `languages.js`, then `npm run translate-ui` (needs `GROQ_API_KEY`). The script ([`scripts/translate-ui.mjs`](scripts/translate-ui.mjs)) machine-translates `en.json` into every language that's missing text, and only fills in missing keys — so corrections made by hand are never overwritten. `npm run translate-ui -- fr ko` limits it to some languages; `--force fr` redoes all of `fr`.
+- **Adding a string:** add it to `en.json`, use it via `t('key')`, run `npm run translate-ui`.
+- **Review:** all non-English text is machine-drafted. Have native speakers check it — especially `emergencyTitle` / `emergencyAction`.
+- Components get text via `const { t, speechLocale } = useLanguage()` (`src/i18n/LanguageContext.jsx`); the app must be wrapped in `<LanguageProvider>` (done in `main.jsx`).
 - Patients can type/speak in any of these languages; `/api/translate` returns the clinical phrasing in **English** (checked with Spanish and Chinese input), which is what the clinician reads.
 - **English copy:** when the UI language isn't English, each entry's words are also translated to English via `POST /api/translate-english` (`{ text }` → `{ english_text, emergency }`, [`api/translate-english.js`](api/translate-english.js)) and saved as `patient_input_en` — run [`supabase/add_english_copy.sql`](supabase/add_english_copy.sql) once. Entries show the original plus "In English: …".
 - **Emergency check for other languages:** `api/lib/emergencyCheck.js` only matches English phrases, so on its own "Tengo dolor de pecho y no puedo respirar" / "我胸口疼，喘不过气来" return `emergency: false` from `/api/translate`. `/api/translate-english` runs the same check on the English copy, and the app shows the urgent-care alert if either flags it. This depends on the model's translation, so native-language patterns in `emergencyCheck.js` would still be a good addition.
