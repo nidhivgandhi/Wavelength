@@ -73,7 +73,7 @@ function EntryItem({ entry, onEdit, onDelete }) {
         {entry.emergency && <span style={{ color: 'crimson', fontWeight: 'bold' }}>· {t('urgent')}</span>}
         {!entry.synced && <span>· {t('deviceOnly')}</span>}
         {!editing && (
-          <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          <span style={{ marginInlineStart: 'auto', display: 'flex', gap: 4 }}>
             <button onClick={() => setEditing(true)}>{t('edit')}</button>
             <DeleteButton onDelete={() => onDelete(entry.id)} />
           </span>

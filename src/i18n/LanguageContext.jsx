@@ -1,31 +1,45 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { LANGUAGES, STRINGS } from './strings.js'
+import { LANGUAGES } from './languages.js'
 
 // App-wide UI language. Wrap the app in <LanguageProvider>, then:
 //
-//   const { t, language, setLanguage, locale } = useLanguage()
+//   const { t, has, language, setLanguage, locale, speechLocale, dir } = useLanguage()
 //   t('completeLog')                          -> 'Complete log' / 'Completar registro' / …
 //   t('phrasingFailed', { message: 'x' })     -> fills in {message}
 //
+// Text comes from ./locales/<code>.json (flat "key": "text" files). A language
+// with no file, or a missing key, falls back to English. `speechLocale` is null
+// for languages browsers can't recognize (e.g. Haitian Creole).
+//
 // The choice is remembered in localStorage; the first visit follows the
-// browser's language when it's one we support.
+// browser's language when it's one we offer.
 
 const STORAGE_KEY = 'wavelength.language'
 const LanguageContext = createContext(null)
 
+// { en: {...}, es: {...}, ... } — every locales/*.json file, bundled.
+const TABLES = Object.fromEntries(
+  Object.entries(import.meta.glob('./locales/*.json', { eager: true, import: 'default' })).map(([path, table]) => [
+    path.match(/([\w-]+)\.json$/)[1],
+    table,
+  ]),
+)
+const ENGLISH = TABLES.en
+
+function findLanguage(code) {
+  return LANGUAGES.find((l) => l.code === code)
+}
+
 function initialLanguage() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (LANGUAGES.some((l) => l.code === saved)) return saved
+    if (findLanguage(saved)) return saved
   } catch {
     // storage blocked — fall through
   }
-  const browser = (navigator.language || 'en').slice(0, 2).toLowerCase()
-  return LANGUAGES.some((l) => l.code === browser) ? browser : 'en'
-}
-
-function lookup(table, key) {
-  return key.split('.').reduce((node, part) => (node == null ? undefined : node[part]), table)
+  const browser = (navigator.language || 'en').toLowerCase()
+  const match = findLanguage(browser.slice(0, 2)) || (browser.startsWith('fil') && findLanguage('tl'))
+  return match ? match.code : 'en'
 }
 
 export function LanguageProvider({ children }) {
@@ -40,20 +54,28 @@ export function LanguageProvider({ children }) {
     }
   }, [])
 
+  const value = useMemo(() => {
+    const info = findLanguage(language) ?? LANGUAGES[0]
+    const table = TABLES[language] ?? {}
+    const t = (key, vars) => {
+      const text = table[key] ?? ENGLISH[key] ?? key
+      return vars ? text.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? vars[name] : match)) : text
+    }
+    return {
+      language,
+      setLanguage,
+      t,
+      has: (key) => key in ENGLISH,
+      speechLocale: info.speech,
+      locale: info.speech ?? info.code, // for dates
+      dir: info.dir ?? 'ltr',
+    }
+  }, [language, setLanguage])
+
   useEffect(() => {
     document.documentElement.lang = language
-  }, [language])
-
-  const value = useMemo(() => {
-    const locale = LANGUAGES.find((l) => l.code === language)?.locale ?? 'en-US'
-    const t = (key, vars) => {
-      const text = lookup(STRINGS[language], key) ?? lookup(STRINGS.en, key) ?? key
-      return typeof text === 'string' && vars
-        ? text.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? vars[name] : match))
-        : text
-    }
-    return { language, setLanguage, locale, t }
-  }, [language, setLanguage])
+    document.documentElement.dir = value.dir
+  }, [language, value.dir])
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
 }
