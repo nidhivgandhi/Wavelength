@@ -1,42 +1,31 @@
 import { useState } from 'react'
+import { useEntries } from './hooks/useEntries.js'
+import EntryList from './components/EntryList.jsx'
 
 // Placeholder UI — replace with the real design.
-// This wires up the locked /api/translate contract so it can be tested
-// end-to-end from day one:
-//
-//   POST /api/translate
-//   body: { patientInput: string }
-//   ->    { clinical_phrasing, why_it_matters, follow_up_question, emergency }
-//
-// The endpoint currently returns stub data. See api/translate.js.
+// Submitting translates via POST /api/translate and saves the entry
+// (Supabase, or localStorage when offline) — see src/lib/intake.js and
+// src/hooks/useEntries.js.
 export default function App() {
   const [patientInput, setPatientInput] = useState('')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const { entries, loading: entriesLoading, notice, submit, remove } = useEntries()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setResult(null)
-    try {
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patientInput }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `Request failed: ${res.status}`)
-      }
-      const data = await res.json()
-      setResult(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    const { translation, translateError } = await submit({ patientInput, inputMethod: 'text' })
+    if (translateError) {
+      setError(`${translateError.message} (your entry was still saved)`)
+    } else {
+      setResult(translation)
+      setPatientInput('')
     }
+    setLoading(false)
   }
 
   return (
@@ -68,6 +57,10 @@ export default function App() {
           {JSON.stringify(result, null, 2)}
         </pre>
       )}
+
+      <h2>Past entries</h2>
+      {notice && <p style={{ color: '#b35c00' }}>{notice}</p>}
+      <EntryList entries={entries} loading={entriesLoading} onDelete={remove} />
     </div>
   )
 }

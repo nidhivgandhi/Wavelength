@@ -99,6 +99,18 @@ Groq's free-tier rate limits are account-specific — check the Limits page at h
 
 1. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
 2. Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**.
+3. Put the project URL (base URL only — no `/rest/v1/`) and anon key in `.env` (see `.env.example`).
+
+Check the wiring at http://localhost:5173/test.html while `npm run dev` is running.
+
+- [`src/lib/storage.js`](src/lib/storage.js) — `createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`. Writes land in localStorage first, then Supabase; anything that fails to upload stays `synced: false` and is pushed by `syncPending()`.
+- [`src/lib/intake.js`](src/lib/intake.js) — `submitIntake({ patientInput, inputMethod })`: translate, then save. The entry is saved even if translation fails.
+- [`src/hooks/useEntries.js`](src/hooks/useEntries.js) — React hook: `{ entries, loading, notice, submit, remove }`. Use this from any UI (typed or voice input).
+
+## Storage (Supabase + localStorage fallback)
+
+1. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
+2. Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**.
 3. Put the project URL and anon key in `.env` (see `.env.example`).
 
 All reads/writes go through [`src/lib/storage.js`](src/lib/storage.js) (`createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`). Writes land in localStorage first, then Supabase; anything that fails to upload stays marked `synced: false` and is pushed by `syncPending()`.
