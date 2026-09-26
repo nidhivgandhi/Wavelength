@@ -1,22 +1,23 @@
 import { supabase, ensureSession } from './supabase.js'
+import { auth, isFirebaseConfigured } from './firebase.js'
 
-// Local-first storage for symptom entries.
+// Account-first storage with a local cache for offline recovery.
 //
-// Every write goes to localStorage first, then to Supabase if it's configured
-// and reachable. Entries that didn't make it up are marked `synced: false` and
-// pushed by syncPending(). With no Supabase env vars the app is localStorage-only.
+// Writes sync to the signed-in user's Supabase rows. Failed/offline writes stay
+// cached with `synced: false` and are pushed by syncPending().
 //
 // Entry shape (matches the `symptoms` table and the /api/translate response):
 //   { id, created_at, patient_input, input_method: 'text' | 'voice',
 //     patient_input_en,   <- English copy for non-English entries (supabase/add_english_copy.sql)
 //     clinical_phrasing, why_it_matters, follow_up_question, emergency,
-//     synced }   <- `synced` is local-only, never sent to Supabase
+//     user_id, synced }   <- synced is local-only
 
 const LOCAL_KEY = 'wavelength.symptoms.v1'
 const TABLE = 'symptoms'
 
 const REMOTE_COLUMNS = [
   'id',
+  'user_id',
   'created_at',
   'patient_input',
   'input_method',
@@ -55,11 +56,23 @@ export function createEntry({ patientInput, inputMethod = 'text', patientInputEn
   }
 }
 
-function toRow(entry) {
+function toRow(entry, userId = entry.user_id) {
   const row = {}
   for (const key of REMOTE_COLUMNS) row[key] = entry[key] ?? null
+  row.user_id = userId
   row.emergency = Boolean(row.emergency)
   return row
+}
+
+async function upsertRows(entries, userId) {
+  const rows = entries.map((entry) => toRow(entry, userId))
+  let result = await supabase.from(TABLE).upsert(rows)
+  if (isMissingEnglishCopyColumn(result.error)) {
+    result = await supabase
+      .from(TABLE)
+      .upsert(rows.map(({ patient_input_en, ...row }) => row))
+  }
+  if (result.error) throw result.error
 }
 
 function byNewest(a, b) {
@@ -101,15 +114,18 @@ function upsertLocal(entry) {
 
 // Save a new or edited entry. Returns { entry, remote, error? }.
 export async function saveEntry(entry) {
-  const local = { ...entry, synced: false }
+  let local = { ...entry, synced: false }
   upsertLocal(local)
 
   if (!supabase) return { entry: local, remote: false }
 
   try {
-    await ensureSession()
-    const { error } = await supabase.from(TABLE).upsert(toRow(local))
-    if (error) throw error
+    const session = await ensureSession()
+    const userId = session?.user?.id
+    if (!userId) throw new Error('Could not determine the account that owns this entry.')
+    local = { ...local, user_id: userId }
+    upsertLocal(local)
+    await upsertRows(local, userId)
     const synced = { ...local, synced: true }
     upsertLocal(synced)
     return { entry: synced, remote: true }
@@ -123,10 +139,16 @@ export async function saveEntry(entry) {
 // Remote rows replace the local cache; unsynced local entries are kept on top.
 export async function listEntries() {
   const local = readLocal()
-  if (!supabase) return { entries: local.sort(byNewest), remote: false }
+  if (!supabase) {
+    const entries = isFirebaseConfigured() ? local.filter((entry) => entry.user_id === auth.currentUser?.uid) : local
+    return { entries: entries.sort(byNewest), remote: false, unownedLocalCount: local.filter((entry) => !entry.user_id).length }
+  }
 
+  let userId = null
   try {
-    await ensureSession()
+    const session = await ensureSession()
+    userId = session?.user?.id
+    if (!userId) throw new Error('Could not determine the signed-in account.')
     let result = await supabase
       .from(TABLE)
       .select(REMOTE_COLUMNS.join(','))
@@ -141,25 +163,42 @@ export async function listEntries() {
     if (error) throw error
 
     const remoteIds = new Set(data.map((row) => row.id))
-    const pending = local.filter((e) => !e.synced && !remoteIds.has(e.id))
+    const pending = local.filter((entry) =>
+      entry.user_id === userId && !entry.synced && !remoteIds.has(entry.id),
+    )
     const merged = [...data.map((row) => ({ ...row, synced: true })), ...pending].sort(byNewest)
-    writeLocal(merged)
-    return { entries: merged, remote: true }
+    writeLocal([...merged, ...local.filter((entry) => !entry.user_id)])
+    return {
+      entries: merged,
+      remote: true,
+      unownedLocalCount: local.filter((entry) => !entry.user_id).length,
+    }
   } catch (error) {
     console.warn('[storage] Supabase read failed, using local cache', error)
-    return { entries: local.sort(byNewest), remote: false, error }
+    const cached = isFirebaseConfigured()
+      ? local.filter((entry) => entry.user_id === (userId || auth.currentUser?.uid))
+      : local
+    return {
+      entries: cached.sort(byNewest),
+      remote: false,
+      error,
+      unownedLocalCount: local.filter((entry) => !entry.user_id).length,
+    }
   }
 }
 
 // Delete by id. Returns { remote, error? }.
 export async function deleteEntry(id) {
-  writeLocal(readLocal().filter((e) => e.id !== id))
-  if (!supabase) return { remote: false }
+  if (!supabase) {
+    writeLocal(readLocal().filter((entry) => entry.id !== id))
+    return { remote: false }
+  }
 
   try {
     await ensureSession()
     const { error } = await supabase.from(TABLE).delete().eq('id', id)
     if (error) throw error
+    writeLocal(readLocal().filter((entry) => entry.id !== id))
     return { remote: true }
   } catch (error) {
     console.warn('[storage] Supabase delete failed', error)
@@ -170,18 +209,49 @@ export async function deleteEntry(id) {
 // Push entries saved while offline. Returns { synced: number, error? }.
 // Call on app load and on the window 'online' event.
 export async function syncPending() {
-  const pending = readLocal().filter((e) => !e.synced)
-  if (!supabase || pending.length === 0) return { synced: 0 }
+  if (!supabase) return { synced: 0 }
 
   try {
-    await ensureSession()
-    const { error } = await supabase.from(TABLE).upsert(pending.map(toRow))
-    if (error) throw error
+    const session = await ensureSession()
+    const userId = session?.user?.id
+    if (!userId) throw new Error('Could not determine the signed-in account.')
+    const pending = readLocal().filter((entry) => !entry.synced && entry.user_id === userId)
+    if (pending.length === 0) return { synced: 0 }
+    await upsertRows(pending, userId)
     const ids = new Set(pending.map((e) => e.id))
     writeLocal(readLocal().map((e) => (ids.has(e.id) ? { ...e, synced: true } : e)))
     return { synced: pending.length }
   } catch (error) {
     console.warn('[storage] sync failed', error)
     return { synced: 0, error }
+  }
+}
+
+export async function migrateLocalEntriesToAccount() {
+  if (!supabase) return { migrated: 0, error: new Error('Account storage is not configured.') }
+
+  const local = readLocal()
+  const unowned = local.filter((entry) => !entry.user_id)
+  if (unowned.length === 0) return { migrated: 0 }
+
+  try {
+    const session = await ensureSession()
+    const userId = session?.user?.id
+    if (!userId) throw new Error('Could not determine the signed-in account.')
+    const migrated = unowned.map((entry) => ({
+      ...entry,
+      id: crypto.randomUUID(),
+      user_id: userId,
+      synced: false,
+    }))
+    await upsertRows(migrated, userId)
+    const migratedIds = new Set(unowned.map((entry) => entry.id))
+    writeLocal([
+      ...local.filter((entry) => !migratedIds.has(entry.id)),
+      ...migrated.map((entry) => ({ ...entry, synced: true })),
+    ])
+    return { migrated: migrated.length }
+  } catch (error) {
+    return { migrated: 0, error }
   }
 }

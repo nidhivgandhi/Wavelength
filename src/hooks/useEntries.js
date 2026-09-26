@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { deleteEntry, listEntries, syncPending } from '../lib/storage.js'
+import { deleteEntry, listEntries, migrateLocalEntriesToAccount, syncPending } from '../lib/storage.js'
 import { submitIntake, updateIntake } from '../lib/intake.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 
@@ -21,11 +21,14 @@ export function useEntries() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState(null)
+  const [unownedLocalCount, setUnownedLocalCount] = useState(0)
+  const [migrating, setMigrating] = useState(false)
 
   const refresh = useCallback(async () => {
     await syncPending()
-    const { entries: loaded, error } = await listEntries()
+    const { entries: loaded, error, unownedLocalCount: unownedCount } = await listEntries()
     setEntries(loaded)
+    setUnownedLocalCount(unownedCount || 0)
     setNotice(error ? 'offlineList' : null)
     setLoading(false)
   }, [])
@@ -62,7 +65,35 @@ export function useEntries() {
     if (error) setNotice('deleteFailed')
   }, [])
 
+  const migrateDeviceEntries = useCallback(async () => {
+    setMigrating(true)
+    try {
+      const result = await migrateLocalEntriesToAccount()
+      if (result.error) {
+        setNotice('migrationFailed')
+        return result
+      }
+      await refresh()
+      setNotice(result.migrated ? 'migratedEntries' : null)
+      return result
+    } finally {
+      setMigrating(false)
+    }
+  }, [refresh])
+
   const pendingCount = entries.filter((e) => !e.synced).length
 
-  return { entries, loading, notice, pendingCount, submit, edit, remove, refresh }
+  return {
+    entries,
+    loading,
+    notice,
+    pendingCount,
+    unownedLocalCount,
+    migrating,
+    submit,
+    edit,
+    remove,
+    migrateDeviceEntries,
+    refresh,
+  }
 }

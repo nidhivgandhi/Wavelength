@@ -53,5 +53,10 @@
   "emergencyAction": "Call 911 or go to the nearest emergency room now.",
   "notices.offlineList": "Couldn't reach the server — showing entries saved on this device.",
   "notices.savedLocally": "Saved on this device only — it will sync when the connection is back.",
-  "notices.deleteFailed": "Couldn't delete from the server — the entry may reappear after a refresh."
+  "notices.deleteFailed": "Couldn't delete from the server — the entry may reappear after a refresh.",
+  "notices.migrationFailed": "Couldn't move the device entries to this account. Check account storage setup and try again.",
+  "notices.migratedEntries": "Device entries are now saved to this account.",
+  "deviceEntriesFound": "{count} entries on this device are not linked to an account yet.",
+  "moveEntriesToAccount": "Move entries to this account",
+  "movingEntries": "Moving entries…"
 }
