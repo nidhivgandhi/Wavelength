@@ -17,7 +17,7 @@ export default {
         },
         // Secondary/accent colors
         secondary: {
-          50: '#155a6b',
+          50: '#1f6475ff',
           100: '#3d8d9c',
           200: '#db8062ff',
           300: '#ecb64bff',
@@ -25,13 +25,13 @@ export default {
         
         // Custom app-specific colors
         background: {
-          light: '#...',
-          dark: '#...',
+          light: '#d9c0f3',
+          dark: '#684ea6',
         },
         text: {
-          primary: '#...',
-          secondary: '#...',
-          muted: '#...',
+          primary: '#daaaca',
+          secondary: '#fffbd6',
+          muted: '#9a6789ff',
         },
       },
       fontFamily: {
@@ -45,27 +45,36 @@ export default {
         sans: ['Lato', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontSize: {
-        // Custom font sizes if needed
-        'display': ['...', { lineHeight: '...', letterSpacing: '...' }],
-        'h1': ['...', { lineHeight: '...', letterSpacing: '...' }],
-        'h2': ['...', { lineHeight: '...', letterSpacing: '...' }],
-        'h3': ['...', { lineHeight: '...', letterSpacing: '...' }],
-        'body-lg': ['...', { lineHeight: '...' }],
-        'body': ['...', { lineHeight: '...' }],
-        'body-sm': ['...', { lineHeight: '...' }],
+        // Mobile-optimized font sizes
+        'display': ['2.5rem', { lineHeight: '1.1', letterSpacing: '-0.02em' }], // 40px
+        'h1': ['2rem', { lineHeight: '1.2', letterSpacing: '-0.01em' }], // 32px
+        'h2': ['1.5rem', { lineHeight: '1.3', letterSpacing: '0' }], // 24px
+        'h3': ['1.25rem', { lineHeight: '1.4', letterSpacing: '0' }], // 20px
+        'body-lg': ['1.125rem', { lineHeight: '1.6' }], // 18px
+        'body': ['1rem', { lineHeight: '1.5' }], // 16px (base)
+        'body-sm': ['0.875rem', { lineHeight: '1.5' }], // 14px
+        'caption': ['0.75rem', { lineHeight: '1.4' }], // 12px
       },
       spacing: {
-        // Custom spacing values if needed
+        // Mobile-friendly touch targets and spacing
+        '18': '4.5rem', // 72px - good for touch targets
+        '22': '5.5rem', // 88px
       },
       borderRadius: {
-        // Custom border radius values
-        'card': '...',
-        'button': '...',
+        // Mobile app-friendly rounded corners
+        'card': '1rem', // 16px - cards
+        'button': '0.75rem', // 12px - buttons
+        'input': '0.5rem', // 8px - input fields
+        'full': '9999px', // pills/badges
       },
       boxShadow: {
-        // Custom shadows
-        'card': '...',
-        'button': '...',
+        // Subtle, mobile-appropriate shadows
+        'card': '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        'card-hover': '0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08)',
+        'button': '0 1px 3px rgba(0, 0, 0, 0.1)',
+        'button-hover': '0 2px 6px rgba(0, 0, 0, 0.15)',
+        'input-focus': '0 0 0 3px rgba(154, 103, 137, 0.2)', // using your primary-400 color
+        'modal': '0 8px 32px rgba(0, 0, 0, 0.16), 0 4px 8px rgba(0, 0, 0, 0.08)',
       },
     },
   },
