@@ -1,10 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
-import { STRINGS } from '../i18n/strings.js'
 import VoiceBox from './VoiceBox.jsx'
-
-const KNOWN_VOICE_ERRORS = new Set(Object.keys(STRINGS.en.voiceErrors))
 
 // Symptom text box + "Click to speak" button, used for new entries and for editing.
 // Speech is recognized in the language picked in <LanguagePicker>.
@@ -20,7 +17,7 @@ export default function EntryForm({
   busyLabel,
   resetAfterSubmit = false,
 }) {
-  const { t, locale } = useLanguage()
+  const { t, has, speechLocale } = useLanguage()
   const [text, setText] = useState(initialText)
   const [usedVoice, setUsedVoice] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -33,7 +30,7 @@ export default function EntryForm({
       const before = textBeforeDictation.current.trimEnd()
       setText(before ? `${before} ${words}` : words)
     },
-    lang: locale,
+    lang: speechLocale,
   })
 
   function startDictation() {
@@ -80,6 +77,7 @@ export default function EntryForm({
         </button>
         <VoiceBox
           supported={speech.supported}
+          languageSupported={Boolean(speechLocale)}
           listening={speech.listening}
           onStart={startDictation}
           onStop={speech.stop}
@@ -94,7 +92,7 @@ export default function EntryForm({
       </div>
       {speech.error && (
         <small style={{ color: 'crimson' }}>
-          {KNOWN_VOICE_ERRORS.has(speech.error)
+          {has(`voiceErrors.${speech.error}`)
             ? t(`voiceErrors.${speech.error}`)
             : t('voiceErrors.other', { code: speech.error })}
         </small>

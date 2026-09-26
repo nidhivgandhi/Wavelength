@@ -14,7 +14,7 @@ import { useLanguage } from '../i18n/LanguageContext.jsx'
 // language is passed along so non-English entries get an English copy.
 //
 // `notice` is a storage problem worth showing the user, as a code the UI turns
-// into text (see `notices` in src/i18n/strings.js):
+// into text (see the `notices.*` keys in src/i18n/locales/en.json):
 //   'offlineList' | 'savedLocally' | 'deleteFailed' | null
 export function useEntries() {
   const { language } = useLanguage()
