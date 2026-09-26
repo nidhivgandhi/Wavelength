@@ -27,4 +27,7 @@ app.listen(PORT, () => {
   if (!process.env.GROQ_API_KEY) {
     console.warn('[dev-api] WARNING: GROQ_API_KEY is not set — copy .env.example to .env and fill it in.');
   }
+  if (!process.env.FIREBASE_PROJECT_ID) {
+    console.log('[dev-api] FIREBASE_PROJECT_ID not set — /api/translate is open (no auth required).');
+  }
 });

@@ -1,9 +1,21 @@
 import { createEntry, saveEntry, translationFields } from './storage.js'
+import { auth } from './firebase.js'
 
+// Attaches a Firebase ID token when a user is actually signed in; otherwise
+// posts plain, like before Firebase auth existed. This is what lets the
+// server-side gate in api/lib/firebaseAdmin.js stay optional too — see the
+// comment at the top of App.jsx. Not authedFetch() from firebase.js, which
+// throws if nobody's signed in; that would break every request while
+// Firebase isn't configured or the user hasn't signed in yet.
 async function postJson(url, payload) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (auth?.currentUser) {
+    headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`
+  }
+
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   })
   const body = await res.json().catch(() => ({}))
