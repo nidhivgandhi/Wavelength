@@ -1,9 +1,11 @@
 # Wavelength
 
-This helps log and compile health symptoms to provide healthcare professionals to address medical invalidation of womens' symptoms. It does not 
-
-Translates a patient's lived-experience description of symptoms into
-clinical-axis language (frequency, duration, functional impact, onset) to address the medical invalidation of womens' symptoms. It does **not** diagnose or name conditions. Built on GroqCloud for fast inference.
+Helps log and compile health symptoms so patients can communicate them more
+clearly to healthcare professionals, addressing the medical invalidation of
+women's symptoms. It translates a patient's lived-experience description
+into clinical-axis language (frequency, duration, functional impact,
+onset) — it does **not** diagnose or name conditions. Built on GroqCloud for
+fast inference.
 
 ## Stack
 
