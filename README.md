@@ -7,6 +7,13 @@ into clinical-axis language (frequency, duration, functional impact,
 onset) — it does **not** diagnose or name conditions. Built on GroqCloud for
 fast inference.
 
+**Live app:** https://wavelength-two-flame.vercel.app/
+
+Deployed on Vercel from `main` — every push to `main` redeploys the live site.
+Environment variables are set in the Vercel project settings (same names as
+`.env`; values without quotes), and the deployed domain is listed under
+Firebase → Authentication → Settings → Authorized domains.
+
 ## Stack
 
 - Frontend: Vite + React (`src/`)
