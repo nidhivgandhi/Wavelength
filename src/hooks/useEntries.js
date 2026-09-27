@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { deleteEntry, listEntries, migrateLocalEntriesToAccount, syncPending } from '../lib/storage.js'
+import { deleteEntry, listEntries, syncPending } from '../lib/storage.js'
 import { submitIntake, updateIntake } from '../lib/intake.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 
@@ -16,19 +16,15 @@ import { useLanguage } from '../i18n/LanguageContext.jsx'
 // `notice` is a storage problem worth showing the user, as a code the UI turns
 // into text (see the `notices.*` keys in src/i18n/locales/en.json):
 //   'offlineList' | 'savedLocally' | 'deleteFailed' | null
-export function useEntries() {
+export function useEntries(processWithAI = true) {
   const { language } = useLanguage()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState(null)
-  const [unownedLocalCount, setUnownedLocalCount] = useState(0)
-  const [migrating, setMigrating] = useState(false)
-
   const refresh = useCallback(async () => {
     await syncPending()
-    const { entries: loaded, error, unownedLocalCount: unownedCount } = await listEntries()
+    const { entries: loaded, error } = await listEntries()
     setEntries(loaded)
-    setUnownedLocalCount(unownedCount || 0)
     setNotice(error ? 'offlineList' : null)
     setLoading(false)
   }, [])
@@ -41,22 +37,22 @@ export function useEntries() {
 
   const submit = useCallback(
     async (input) => {
-      const result = await submitIntake({ language, ...input })
+      const result = await submitIntake({ language, ...input, processWithAI })
       setEntries((prev) => [result.entry, ...prev.filter((e) => e.id !== result.entry.id)])
       setNotice(result.saveError ? 'savedLocally' : null)
       return result
     },
-    [language],
+    [language, processWithAI],
   )
 
   const edit = useCallback(
     async (entry, input) => {
-      const result = await updateIntake(entry, { language, ...input })
+      const result = await updateIntake(entry, { language, ...input, processWithAI })
       setEntries((prev) => prev.map((e) => (e.id === result.entry.id ? result.entry : e)))
       setNotice(result.saveError ? 'savedLocally' : null)
       return result
     },
-    [language],
+    [language, processWithAI],
   )
 
   const remove = useCallback(async (id) => {
@@ -65,22 +61,6 @@ export function useEntries() {
     if (error) setNotice('deleteFailed')
   }, [])
 
-  const migrateDeviceEntries = useCallback(async () => {
-    setMigrating(true)
-    try {
-      const result = await migrateLocalEntriesToAccount()
-      if (result.error) {
-        setNotice('migrationFailed')
-        return result
-      }
-      await refresh()
-      setNotice(result.migrated ? 'migratedEntries' : null)
-      return result
-    } finally {
-      setMigrating(false)
-    }
-  }, [refresh])
-
   const pendingCount = entries.filter((e) => !e.synced).length
 
   return {
@@ -88,12 +68,9 @@ export function useEntries() {
     loading,
     notice,
     pendingCount,
-    unownedLocalCount,
-    migrating,
     submit,
     edit,
     remove,
-    migrateDeviceEntries,
     refresh,
   }
 }

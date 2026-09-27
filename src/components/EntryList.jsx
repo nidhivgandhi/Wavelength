@@ -28,7 +28,7 @@ function DeleteButton({ onDelete }) {
   )
 }
 
-export default function EntryList({ entries, loading, onEdit, onDelete }) {
+export default function EntryList({ entries, loading, onEdit, onDelete, aiProcessingEnabled = true }) {
   const { t, locale } = useLanguage()
   const [visibleMonth, setVisibleMonth] = useState(null)
   const [selectedDate, setSelectedDate] = useState(null)
@@ -145,7 +145,7 @@ export default function EntryList({ entries, loading, onEdit, onDelete }) {
             {selectedEntries.length > 0 ? (
               <ul className="entry-list">
                 {selectedEntries.map((entry) => (
-                  <EntryItem key={entry.id} entry={entry} onEdit={onEdit} onDelete={onDelete} />
+                  <EntryItem aiProcessingEnabled={aiProcessingEnabled} key={entry.id} entry={entry} onEdit={onEdit} onDelete={onDelete} />
                 ))}
               </ul>
             ) : (
@@ -174,7 +174,7 @@ function isLowDetail(entry) {
   return /insufficient (detail|information)|more detail/i.test(entry.clinical_phrasing || '')
 }
 
-function EntryItem({ entry, onEdit, onDelete }) {
+function EntryItem({ entry, onEdit, onDelete, aiProcessingEnabled }) {
   const { t, locale, language } = useLanguage()
   const [editing, setEditing] = useState(false)
   const [error, setError] = useState(null)
@@ -204,7 +204,7 @@ function EntryItem({ entry, onEdit, onDelete }) {
       </div>
 
       {editing ? (
-        <EntryForm initialText={entry.patient_input} onSubmit={save} onCancel={() => setEditing(false)} />
+        <EntryForm initialText={entry.patient_input} onSubmit={save} onCancel={() => setEditing(false)} allowVoice={aiProcessingEnabled} />
       ) : (
         <>
           <p className="entry-text">{entry.patient_input}</p>

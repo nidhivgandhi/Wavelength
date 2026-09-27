@@ -62,12 +62,18 @@ async function englishSafely(text) {
 // it (the latter runs the English-only keyword check on the English copy).
 //
 // Returns { entry, translation, translateError, englishError, remote, saveError }.
-export async function submitIntake({ patientInput, inputMethod = 'text', language = 'en' }) {
+export async function submitIntake({ patientInput, inputMethod = 'text', language = 'en', processWithAI = true }) {
   const text = patientInput.trim()
-  const [clinical, english] = await Promise.all([
-    translateSafely(text),
-    language !== 'en' ? englishSafely(text) : null,
-  ])
+  let clinical = { translation: null, translateError: null }
+  let english = null
+  if (processWithAI) {
+    const [clinicalResult, englishResult] = await Promise.all([
+      translateSafely(text),
+      language !== 'en' ? englishSafely(text) : null,
+    ])
+    clinical = clinicalResult
+    english = englishResult
+  }
 
   const entry = createEntry({
     patientInput: text,
@@ -97,28 +103,38 @@ export async function submitIntake({ patientInput, inputMethod = 'text', languag
 // input_method becomes 'voice' if dictation was used.
 //
 // Returns { entry, translation, translateError, englishError, remote, saveError }.
-export async function updateIntake(entry, { patientInput, inputMethod, language = 'en' }) {
+export async function updateIntake(entry, { patientInput, inputMethod, language = 'en', processWithAI = true }) {
   const text = patientInput.trim()
   const textChanged = text !== entry.patient_input
   const wantEnglish = language !== 'en' || Boolean(entry.patient_input_en)
-  const doClinical = textChanged || !entry.clinical_phrasing
-  const doEnglish = wantEnglish && (textChanged || !entry.patient_input_en)
-
-  const [clinical, english] = await Promise.all([
-    doClinical ? translateSafely(text) : null,
-    doEnglish ? englishSafely(text) : null,
-  ])
+  let clinical = null
+  let english = null
+  if (processWithAI) {
+    const doClinical = textChanged || !entry.clinical_phrasing
+    const doEnglish = wantEnglish && (textChanged || !entry.patient_input_en)
+    const [clinicalResult, englishResult] = await Promise.all([
+      doClinical ? translateSafely(text) : null,
+      doEnglish ? englishSafely(text) : null,
+    ])
+    clinical = clinicalResult
+    english = englishResult
+  }
 
   const update = {
     patient_input: text,
     input_method: inputMethod === 'voice' ? 'voice' : entry.input_method,
   }
-  if (clinical) Object.assign(update, translationFields(clinical.translation))
-  if (english) update.patient_input_en = english.englishText
-  else if (textChanged) update.patient_input_en = null
-  update.emergency = Boolean(
-    (clinical ? clinical.translation?.emergency : entry.emergency) || english?.emergency,
-  )
+  if (processWithAI) {
+    if (clinical) Object.assign(update, translationFields(clinical.translation))
+    if (english) update.patient_input_en = english.englishText
+    else if (textChanged) update.patient_input_en = null
+    update.emergency = Boolean(
+      (clinical ? clinical.translation?.emergency : entry.emergency) || english?.emergency,
+    )
+  } else if (textChanged) {
+    Object.assign(update, translationFields(null), { patient_input_en: null })
+    update.emergency = false
+  }
 
   const { entry: saved, remote, error: saveError } = await saveEntry({ ...entry, ...update })
   return {

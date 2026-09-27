@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { findRecurringEntries, generateEntrySummary } from '../lib/analysis.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import SymptomFrequencyChart from './SymptomFrequencyChart.jsx'
 
-export default function AnalysisView({ entries, loading }) {
+export default function AnalysisView({ entries, loading, aiProcessingEnabled = true }) {
   const { language, locale, t } = useLanguage()
   const [selectedTerms, setSelectedTerms] = useState(null)
   const [chartTimeUnit, setChartTimeUnit] = useState('week')
@@ -31,6 +31,13 @@ export default function AnalysisView({ entries, loading }) {
     setSummary(null)
     setError(null)
   }
+
+  useEffect(() => {
+    if (!aiProcessingEnabled) {
+      setSummary(null)
+      setError(null)
+    }
+  }, [aiProcessingEnabled])
 
   async function handleGenerate() {
     setGenerating(true)
@@ -150,12 +157,12 @@ export default function AnalysisView({ entries, loading }) {
       <section className="entry-panel analysis-summary-panel">
         <div>
           <h2>{t('generatedSummary')}</h2>
-          <p className="analysis-intro">{t('summaryDisclaimer')}</p>
+          <p className="analysis-intro">{aiProcessingEnabled ? t('summaryDisclaimer') : 'AI processing is off. Turn it on from the profile menu to generate a summary.'}</p>
         </div>
         <div className="analysis-summary-actions">
           <button
             className="primary-action analysis-generate"
-            disabled={loading || generating || exporting || selectedEntries.length === 0}
+            disabled={!aiProcessingEnabled || loading || generating || exporting || selectedEntries.length === 0}
             onClick={handleGenerate}
             type="button"
           >
@@ -163,7 +170,7 @@ export default function AnalysisView({ entries, loading }) {
           </button>
           <button
             className="secondary-action"
-            disabled={loading || generating || exporting || selectedEntries.length === 0}
+            disabled={!aiProcessingEnabled || loading || generating || exporting || selectedEntries.length === 0}
             onClick={handleDownloadPdf}
             type="button"
           >

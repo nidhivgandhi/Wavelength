@@ -155,7 +155,6 @@ export async function listEntries() {
     return {
       entries: entries.sort(byNewest),
       remote: false,
-      unownedLocalCount: local.filter(needsAccountMigration).length,
     }
   }
 
@@ -186,7 +185,6 @@ export async function listEntries() {
     return {
       entries: merged,
       remote: true,
-      unownedLocalCount: local.filter(needsAccountMigration).length,
     }
   } catch (error) {
     console.warn('[storage] Supabase read failed, using local cache', error)
@@ -197,7 +195,6 @@ export async function listEntries() {
       entries: cached.sort(byNewest),
       remote: false,
       error,
-      unownedLocalCount: local.filter(needsAccountMigration).length,
     }
   }
 }
@@ -239,34 +236,5 @@ export async function syncPending() {
   } catch (error) {
     console.warn('[storage] sync failed', error)
     return { synced: 0, error }
-  }
-}
-
-export async function migrateLocalEntriesToAccount() {
-  if (!supabase) return { migrated: 0, error: new Error('Account storage is not configured.') }
-
-  const local = readLocal()
-  const unowned = local.filter(needsAccountMigration)
-  if (unowned.length === 0) return { migrated: 0 }
-
-  try {
-    const session = await ensureSession()
-    const userId = session?.user?.id
-    if (!userId) throw new Error('Could not determine the signed-in account.')
-    const migrated = unowned.map((entry) => ({
-      ...entry,
-      id: crypto.randomUUID(),
-      user_id: userId,
-      synced: false,
-    }))
-    await upsertRows(migrated, userId)
-    const migratedIds = new Set(unowned.map((entry) => entry.id))
-    writeLocal([
-      ...local.filter((entry) => !migratedIds.has(entry.id)),
-      ...migrated.map((entry) => ({ ...entry, synced: true })),
-    ])
-    return { migrated: migrated.length }
-  } catch (error) {
-    return { migrated: 0, error }
   }
 }

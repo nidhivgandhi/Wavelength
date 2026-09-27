@@ -17,6 +17,7 @@ export default function EntryForm({
   busyLabel,
   resetAfterSubmit = false,
   dashboard = false,
+  allowVoice = true,
 }) {
   const { t, has, speechLocale } = useLanguage()
   const [text, setText] = useState(initialText)
@@ -73,7 +74,7 @@ export default function EntryForm({
       />
       <div className={dashboard ? 'dashboard-form-actions' : 'form-actions'}>
         {dashboard ? (
-          <button className="dashboard-voice-button" type="button" onClick={speech.listening ? speech.stop : startDictation} disabled={busy || !speech.supported || !speechLocale} aria-pressed={speech.listening}>
+          <button className="dashboard-voice-button" type="button" onClick={speech.listening ? speech.stop : startDictation} disabled={busy || !allowVoice || !speech.supported || !speechLocale} aria-pressed={speech.listening}>
             {speech.listening ? t('stopListening') : '◖ Voice recording'}
           </button>
         ) : (
@@ -87,8 +88,9 @@ export default function EntryForm({
           listening={speech.listening}
           onStart={startDictation}
           onStop={speech.stop}
-          disabled={busy}
+          disabled={busy || !allowVoice}
         />}
+        {dashboard && !allowVoice && <small className="form-error">Voice input is off while AI processing is disabled.</small>}
         {speech.listening && <span className="listening-text">{t('listening')}</span>}
         {onCancel && (
           <button className="ghost-action" type="button" onClick={onCancel} disabled={busy}>

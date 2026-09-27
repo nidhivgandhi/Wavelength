@@ -30,6 +30,11 @@ import {
 // server: /api/translate only requires a token when FIREBASE_PROJECT_ID is set.
 
 const AUTH_USER_STORAGE_KEY = 'wavelength.authUser.v1'
+const AI_PROCESSING_STORAGE_PREFIX = 'wavelength.aiProcessing.v1.'
+
+function saveAiProcessingPreference(uid, enabled) {
+  localStorage.setItem(`${AI_PROCESSING_STORAGE_PREFIX}${uid || 'guest'}`, String(enabled))
+}
 
 const authErrorMessages = {
   'auth/account-exists-with-different-credential':
@@ -82,7 +87,7 @@ function Toast({ toast, onDismiss }) {
   )
 }
 
-function TermsDialog({ onClose }) {
+function TermsDialog({ onClose, aiProcessingEnabled, onAiProcessingChange }) {
   return (
     <div className="terms-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section aria-labelledby="terms-title" aria-modal="true" className="terms-dialog" role="dialog">
@@ -90,11 +95,12 @@ function TermsDialog({ onClose }) {
         <div className="terms-content">
           <section><h3>1. What Wavelength does</h3><p>Wavelength helps you record symptoms and organize your own descriptions into language that may be easier to discuss with a healthcare professional. It is an informational journaling tool. It does not provide medical care, diagnose conditions, recommend treatment, or replace advice from a qualified professional. AI generated summaries and phrasing may be incomplete or incorrect; review them before sharing.</p></section>
           <section><h3>2. Urgent symptoms</h3><p>Do not use Wavelength for emergencies or to decide whether to seek care. The app’s automated urgent symptom checks can miss emergencies or flag a symptom incorrectly. If you may be experiencing an emergency, call your local emergency number or seek urgent medical care.</p></section>
-          <section><h3>3. Your entries and how they are handled</h3><p>You control what you enter. Symptom text may include sensitive health information. To provide translations or summaries, the app sends relevant text to its configured AI service. Entries are kept in this browser and, when configured, synced to the app’s Supabase storage. The app may also use Firebase for account sign-in. Storage and service availability depend on the project configuration.</p></section>
-          <section><h3>4. Voice input</h3><p>If you use voice input, your browser’s speech recognition feature processes audio to create text. The browser or speech recognition provider may process the audio under its own terms and privacy practices. You can use typing instead.</p></section>
+          <section><h3>3. Your entries and how they are handled</h3><p>You control what you enter. Symptom text may include sensitive health information. When AI processing is enabled, relevant text is sent to the configured AI service for translations, clinical phrasing, and generated summaries. Turn it off to record entries without sending new or edited text to AI. Translations, generated summaries, and automated urgent-symptom checks will not run while it is off. AI-generated content already saved to an entry is not removed. Entries are kept in this browser and, when configured, synced to the app’s Supabase storage. The app may also use Firebase for account sign-in.</p></section>
+          <section><h3>4. Voice input</h3><p>If you use voice input, your browser’s speech recognition feature processes audio to create text. The browser or speech recognition provider may process the audio under its own terms and privacy practices. Voice input is disabled while Record only is selected; you can still type entries.</p></section>
           <section><h3>5. Use of the service</h3><p>Use the service lawfully and only for your own personal journaling. Keep your sign-in details secure, and do not rely on Wavelength as the only copy of information you need. You can review, edit, or delete entries using the app where those controls are available.</p></section>
           <section><h3>6. Changes and availability</h3><p>Features may change, be interrupted, or become unavailable. We may update these terms as the service changes. Continued use after updated terms are presented means you accept the updated terms.</p></section>
         </div>
+        <label className="terms-ai-toggle"><input checked={!aiProcessingEnabled} onChange={(event) => onAiProcessingChange(!event.target.checked)} type="checkbox" /><span><strong>Record only — do not use AI</strong><small>Entries are saved without AI translation or generated summaries. Automated urgent-symptom checks are also off.</small></span></label>
         <div className="terms-dialog-actions"><button className="dashboard-save-button" onClick={onClose} type="button">Close</button></div>
       </section>
     </div>
@@ -125,6 +131,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
   const [keepSignedIn, setKeepSignedIn] = useState(true)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [showTerms, setShowTerms] = useState(false)
+  const [aiProcessingEnabled, setAiProcessingEnabled] = useState(true)
   const [fieldErrors, setFieldErrors] = useState({})
   const [loadingAction, setLoadingAction] = useState(null)
 
@@ -179,7 +186,8 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
     try {
       await setAuthPersistence(keepSignedIn)
       if (isSignup) {
-        await createUserWithEmailAndPassword(auth, email.trim(), password)
+        const credential = await createUserWithEmailAndPassword(auth, email.trim(), password)
+        saveAiProcessingPreference(credential.user.uid, aiProcessingEnabled)
         onToast({ type: 'success', message: 'Account created. Welcome to Wavelength.' })
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password)
@@ -204,7 +212,8 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
 
     setLoadingAction('google')
     try {
-      await signInWithPopup(auth, googleProvider)
+      const credential = await signInWithPopup(auth, googleProvider)
+      if (isSignup) saveAiProcessingPreference(credential.user.uid, aiProcessingEnabled)
       onToast({ type: 'success', message: 'Signed in with Google.' })
     } catch (error) {
       onToast({ type: 'error', message: friendlyAuthError(error) })
@@ -363,7 +372,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
           </p>
         </section>
       </section>
-      {showTerms && <TermsDialog onClose={() => setShowTerms(false)} />}
+      {showTerms && <TermsDialog aiProcessingEnabled={aiProcessingEnabled} onAiProcessingChange={setAiProcessingEnabled} onClose={() => setShowTerms(false)} />}
     </main>
   )
 }
@@ -377,18 +386,23 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   const [error, setError] = useState(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [showTerms, setShowTerms] = useState(false)
+  const [aiProcessingEnabled, setAiProcessingEnabled] = useState(() =>
+    localStorage.getItem(`${AI_PROCESSING_STORAGE_PREFIX}${user?.uid || 'guest'}`) !== 'false',
+  )
   const profileMenuRef = useRef(null)
+
+  function updateAiProcessingPreference(enabled) {
+    saveAiProcessingPreference(user?.uid, enabled)
+    setAiProcessingEnabled(enabled)
+  }
   const {
     entries,
     loading,
     notice,
-    unownedLocalCount,
-    migrating,
     submit,
     edit,
     remove,
-    migrateDeviceEntries,
-  } = useEntries()
+  } = useEntries(aiProcessingEnabled)
 
   useEffect(() => {
     function closeMenu(event) {
@@ -425,30 +439,29 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
     <main className="dashboard-shell">
       <Toast toast={toast} onDismiss={onToastDismiss} />
       <aside className="dashboard-sidebar">
-        <div className="dashboard-brand"><h1>Wavelength</h1><p>Wellness management</p></div>
+        <div className="dashboard-brand"><img alt="Wavelength Wellness Management" src="/wavelength-logo.png" /></div>
         <nav aria-label={t('mainNavigation')} className="dashboard-nav">
           {navItems.map(([id, label, icon]) => <button key={id} className={`dashboard-nav-link ${activeView === id ? 'active' : ''}`} onClick={() => setActiveView(id)} type="button"><span aria-hidden="true">{icon}</span>{label}</button>)}
         </nav>
       </aside>
       <section className="dashboard-main">
-        <header className="dashboard-header"><div><h2>{title}</h2><p>{activeView === 'dashboard' ? `Today is ${today}` : 'A clearer picture starts with your notes.'}</p></div><div className="dashboard-header-actions" ref={profileMenuRef}><button aria-label="Open profile menu" aria-expanded={profileMenuOpen} aria-haspopup="menu" className="dashboard-avatar" onClick={() => setProfileMenuOpen((open) => !open)} type="button">{(user?.displayName || user?.email || 'W').slice(0, 1).toUpperCase()}</button>{profileMenuOpen && <div className="dashboard-profile-menu" role="menu"><button aria-label="Close menu" className="dashboard-profile-close" onClick={() => setProfileMenuOpen(false)} type="button">×</button><div className="dashboard-profile-info"><strong>{user?.displayName || 'Your profile'}</strong><span>{user?.email || 'Guest account'}</span></div><div className="dashboard-profile-language"><LanguagePicker /></div><button className="dashboard-profile-logout" onClick={() => { setProfileMenuOpen(false); setShowTerms(true) }} role="menuitem" type="button"><span aria-hidden="true">ⓘ</span>Terms and Conditions</button>{onSignOut && <button className="dashboard-profile-logout" onClick={() => { setProfileMenuOpen(false); onSignOut() }} role="menuitem" type="button"><span aria-hidden="true">↪</span>Log out</button>}</div>}</div></header>
+        <header className="dashboard-header"><div><h2>{title}</h2><p>{activeView === 'dashboard' ? `Today is ${today}` : 'A clearer picture starts with your notes.'}</p></div><div className="dashboard-header-actions" ref={profileMenuRef}><button aria-label="Open profile menu" aria-expanded={profileMenuOpen} aria-haspopup="menu" className="dashboard-avatar" onClick={() => setProfileMenuOpen((open) => !open)} type="button">{(user?.displayName || user?.email || 'W').slice(0, 1).toUpperCase()}</button>{profileMenuOpen && <div className="dashboard-profile-menu" role="menu"><button aria-label="Close menu" className="dashboard-profile-close" onClick={() => setProfileMenuOpen(false)} type="button">×</button><div className="dashboard-profile-info"><strong>{user?.displayName || 'Your profile'}</strong><span>{user?.email || 'Guest account'}</span></div><div className="dashboard-profile-language"><LanguagePicker /></div><label className="dashboard-ai-toggle"><input checked={!aiProcessingEnabled} onChange={(event) => updateAiProcessingPreference(!event.target.checked)} type="checkbox" /><span><strong>Record only — no AI</strong><small>Automated urgent-symptom checks are off too.</small></span></label><button className="dashboard-profile-logout" onClick={() => { setProfileMenuOpen(false); setShowTerms(true) }} role="menuitem" type="button"><span aria-hidden="true">ⓘ</span>Terms and Conditions</button>{onSignOut && <button className="dashboard-profile-logout" onClick={() => { setProfileMenuOpen(false); onSignOut() }} role="menuitem" type="button"><span aria-hidden="true">↪</span>Log out</button>}</div>}</div></header>
         <div className="dashboard-content">
           {notice && <p className="notice-text" role="status">{t(`notices.${notice}`)}</p>}
-          {unownedLocalCount > 0 && <div className="account-migration" role="status"><p>{t('deviceEntriesFound', { count: unownedLocalCount })}</p><button className="secondary-action" disabled={migrating} onClick={migrateDeviceEntries} type="button">{migrating ? t('movingEntries') : t('moveEntriesToAccount')}</button></div>}
-          {activeView === 'analysis' ? <AnalysisView entries={entries} loading={loading} /> : activeView === 'log' ? <div className="symptom-log-stage"><div aria-hidden="true" className="symptom-log-art" /><section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3></div><EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section></div> : activeView === 'dashboard' ? <>
+          {activeView === 'analysis' ? <AnalysisView aiProcessingEnabled={aiProcessingEnabled} entries={entries} loading={loading} /> : activeView === 'log' ? <div className="symptom-log-stage"><div aria-hidden="true" className="symptom-log-art" /><section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3></div><EntryList aiProcessingEnabled={aiProcessingEnabled} entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section></div> : activeView === 'dashboard' ? <>
             <section className="dashboard-card journal-card">
               <div className="dashboard-card-heading"><h3>Symptom Journal</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">See all history</button></div>
               <p className="journal-prompt">How are you feeling today?</p>
-              <div><EntryForm onSubmit={handleSubmit} submitLabel="Save & go to analytics" busyLabel={t('saving')} resetAfterSubmit dashboard /></div>
+              <div><EntryForm allowVoice={aiProcessingEnabled} onSubmit={handleSubmit} submitLabel="Save & go to analytics" busyLabel={t('saving')} resetAfterSubmit dashboard /></div>
               {error && <p className="error-text">{error}</p>}
               {result?.emergency && <div className="urgent-card" role="alert"><strong>{t('emergencyTitle')}</strong><p>{t('emergencyAction')}</p>{result.clinical_phrasing && <p lang="en">{result.clinical_phrasing}</p>}</div>}
             </section>
             <p className="dashboard-footnote">Your entries are stored securely. Logging regularly can help you notice patterns over time.</p>
-            {entries.length > 0 && <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">View history</button></div><EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section>}
+            {recentEntries.length > 0 && <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>Recent entries</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">View history</button></div><EntryList aiProcessingEnabled={aiProcessingEnabled} entries={recentEntries} loading={loading} onEdit={edit} onDelete={remove} /></section>}
           </> : <section className="dashboard-card simple-view"><span className="simple-view-icon">✦</span><h3>Your wellness, at your pace</h3><p>Small, consistent notes can help you prepare for a conversation with your care team.</p></section>}
         </div>
       </section>
-      {showTerms && <TermsDialog onClose={() => setShowTerms(false)} />}
+      {showTerms && <TermsDialog aiProcessingEnabled={aiProcessingEnabled} onAiProcessingChange={updateAiProcessingPreference} onClose={() => setShowTerms(false)} />}
     </main>
   )
 }
