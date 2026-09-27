@@ -9,8 +9,13 @@
 // on BOTH the original text and the English translation. That check only knows
 // English phrases, so this is what lets non-English emergencies ("dolor de
 // pecho", "胸口疼") trip it. The client ORs this with /api/translate's flag.
+//
+// Requires a signed-in Firebase user when FIREBASE_PROJECT_ID is set, same as
+// /api/translate and /api/analyze (see api/lib/firebaseAdmin.js), so the Groq
+// key can't be used by anyone who finds the URL.
 
 import { checkEmergency } from './lib/emergencyCheck.js';
+import { requireFirebaseUser } from './lib/firebaseAdmin.js';
 import { translateToEnglish } from './lib/englishTranslator.js';
 import { GroqError } from './lib/groqClient.js';
 
@@ -21,6 +26,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const firebaseUser = await requireFirebaseUser(req, res);
+  if (!firebaseUser) return;
 
   const { text } = req.body || {};
   if (typeof text !== 'string' || !text.trim()) {
