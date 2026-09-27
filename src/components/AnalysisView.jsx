@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { findRecurringEntries, generateEntrySummary } from '../lib/analysis.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
+import SymptomFrequencyChart from './SymptomFrequencyChart.jsx'
 
 export default function AnalysisView({ entries, loading }) {
   const { language, locale, t } = useLanguage()
@@ -54,6 +55,12 @@ export default function AnalysisView({ entries, loading }) {
           </div>
         )}
       </section>
+
+      {!loading && terms.length > 0 && (
+        <section className="entry-panel">
+          <SymptomFrequencyChart entries={matchingEntries} recurringTerms={terms} />
+        </section>
+      )}
 
       {matchingEntries.length > 0 && (
         <section className="entry-panel">
