@@ -3,9 +3,28 @@
 @tailwind utilities;
 
 :root {
-  color: #17211b;
-  background: #f8f7f2;
-  font-family: Lato, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Tailwind color palette */
+  --color-primary-50: #d9c0f3;
+  --color-primary-100: #684ea6;
+  --color-primary-200: #fffbd6;
+  --color-primary-300: #daaaca;
+  --color-primary-400: #9a6789;
+  
+  --color-secondary-50: #1f6475;
+  --color-secondary-100: #3d8d9c;
+  --color-secondary-200: #db8062;
+  --color-secondary-300: #ecb64b;
+  
+  --color-bg-light: #d9c0f3;
+  --color-bg-dark: #684ea6;
+  
+  --color-text-primary: #daaaca;
+  --color-text-secondary: #fffbd6;
+  --color-text-muted: #9a6789;
+  
+  color: var(--color-secondary-50);
+  background: var(--color-bg-light);
+  font-family: Lato, -apple-system, BlinkMacSystemFont, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -43,16 +62,25 @@ p {
 }
 
 h1 {
-  color: #102016;
+  color: var(--color-primary-100);
+  font-family: "Libre Baskerville", Georgia, serif;
   font-size: clamp(2rem, 4vw, 3.6rem);
   line-height: 0.98;
   letter-spacing: 0;
 }
 
 h2 {
-  color: #142219;
+  color: var(--color-primary-100);
+  font-family: "Libre Baskerville", Georgia, serif;
   font-size: 1.05rem;
   letter-spacing: 0;
+}
+
+p,
+span,
+label,
+button {
+  color: var(--color-secondary-50);
 }
 
 input,
