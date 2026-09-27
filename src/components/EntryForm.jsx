@@ -5,7 +5,7 @@ import VoiceBox from './VoiceBox.jsx'
 
 // Symptom text box + "Click to speak" button, used for new entries and for editing.
 // Speech is recognized in the language picked in <LanguagePicker>.
-// Placeholder styling — swap for the real design.
+// Styles: .entry-form / .form-actions / *-action buttons in src/index.css.
 //
 // onSubmit({ patientInput, inputMethod }) — pass to useEntries().submit or wrap
 // useEntries().edit. Awaited; the form shows "busy" until it resolves.
@@ -55,10 +55,8 @@ export default function EntryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label htmlFor={textId} style={{ display: 'block', fontWeight: 600, marginBottom: 4 }}>
-        {t('symptomsLabel')}
-      </label>
+    <form className="entry-form" onSubmit={handleSubmit}>
+      <label htmlFor={textId}>{t('symptomsLabel')}</label>
       <textarea
         id={textId}
         value={text}
@@ -69,10 +67,9 @@ export default function EntryForm({
         readOnly={speech.listening}
         placeholder={t('symptomsPlaceholder')}
         rows={4}
-        style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '1rem' }}
       />
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-        <button type="submit" disabled={busy || !text.trim()}>
+      <div className="form-actions">
+        <button className="primary-action" type="submit" disabled={busy || !text.trim()}>
           {busy ? busyLabel ?? t('saving') : submitLabel ?? t('saveChanges')}
         </button>
         <VoiceBox
@@ -83,15 +80,15 @@ export default function EntryForm({
           onStop={speech.stop}
           disabled={busy}
         />
-        {speech.listening && <small style={{ color: 'crimson' }}>{t('listening')}</small>}
+        {speech.listening && <span className="listening-text">{t('listening')}</span>}
         {onCancel && (
-          <button type="button" onClick={onCancel} disabled={busy}>
+          <button className="ghost-action" type="button" onClick={onCancel} disabled={busy}>
             {t('cancel')}
           </button>
         )}
       </div>
       {speech.error && (
-        <small style={{ color: 'crimson' }}>
+        <small className="form-error">
           {has(`voiceErrors.${speech.error}`)
             ? t(`voiceErrors.${speech.error}`)
             : t('voiceErrors.other', { code: speech.error })}

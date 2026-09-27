@@ -6,7 +6,7 @@ export default function LanguagePicker() {
   const { language, setLanguage, t } = useLanguage()
 
   return (
-    <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 14 }}>
+    <label className="language-picker">
       {t('languageLabel')}
       <select value={language} onChange={(e) => setLanguage(e.target.value)}>
         {LANGUAGES.map((l) => (

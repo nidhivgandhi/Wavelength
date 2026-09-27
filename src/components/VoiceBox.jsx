@@ -10,7 +10,14 @@ export default function VoiceBox({ supported, languageSupported = true, listenin
   if (!languageSupported) return <span className="voice-unsupported">{t('voiceLanguageUnsupported')}</span>
 
   return (
-    <button type="button" onClick={listening ? onStop : onStart} disabled={disabled} aria-pressed={listening}>
+    <button
+      className={listening ? 'record-action recording' : 'record-action'}
+      type="button"
+      onClick={listening ? onStop : onStart}
+      disabled={disabled}
+      aria-pressed={listening}
+    >
+      <span aria-hidden="true" className="record-dot" />
       {listening ? t('stopListening') : t('clickToSpeak')}
     </button>
   )
