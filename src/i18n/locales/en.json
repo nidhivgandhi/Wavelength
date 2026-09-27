@@ -35,7 +35,7 @@
   "generatingSummary": "Generating summary…",
   "summaryError": "Couldn't generate summary: {message}",
   "recurringDetails": "Recurring details",
-  "noChartData": "Add more entries to see the frequency chart.",
+  "noChartData": "Need more data to display the chart.",
   "symptomFrequencyChart": "Symptom frequency over time",
   "timeUnit": "Time unit",
   "weeks": "Weeks",

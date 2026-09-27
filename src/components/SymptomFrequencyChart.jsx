@@ -38,14 +38,27 @@ export default function SymptomFrequencyChart({ entries, recurringTerms }) {
       
       <VictoryChart
         theme={VictoryTheme.material}
+        width={600}
         height={300}
-        padding={{ top: 20, bottom: 60, left: 50, right: 20 }}
+        padding={{ top: 60, bottom: 60, left: 60, right: 40 }}
         containerComponent={
           <VictoryVoronoiContainer
             labels={({ datum }) => `${datum.frequency} ${datum.frequency === 1 ? t('entry') : t('entries')}`}
           />
         }
       >
+        <VictoryLegend
+          x={60}
+          y={0}
+          orientation="horizontal"
+          gutter={20}
+          style={{
+            labels: { fontSize: 10, fill: '#1a1f1d' }
+          }}
+          data={legendData}
+          itemsPerRow={4}
+        />
+
         <VictoryAxis
           label={timeUnit === 'week' ? t('timeAxisWeeks') : t('timeAxisMonths')}
           style={{
@@ -80,18 +93,6 @@ export default function SymptomFrequencyChart({ entries, recurringTerms }) {
             interpolation="monotoneX"
           />
         ))}
-
-        <VictoryLegend
-          x={50}
-          y={10}
-          orientation="horizontal"
-          gutter={20}
-          style={{
-            labels: { fontSize: 10, fill: '#1a1f1d' }
-          }}
-          data={legendData}
-          itemsPerRow={4}
-        />
       </VictoryChart>
 
       <p className="chart-description">

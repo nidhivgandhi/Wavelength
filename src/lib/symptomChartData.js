@@ -16,9 +16,11 @@ function getTimeUnit(entries) {
 // Get the start of the week for a given date (Sunday)
 function getWeekStart(date) {
   const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
   const day = d.getDay()
   const diff = d.getDate() - day
-  return new Date(d.setDate(diff))
+  d.setDate(diff)
+  return d
 }
 
 // Get the start of the month for a given date
@@ -51,7 +53,7 @@ export function generateChartData(entries, recurringTerms) {
   entries.forEach(entry => {
     const entryDate = new Date(entry.created_at)
     const period = periodStart(entryDate)
-    const periodKey = period.toISOString()
+    const periodKey = period.getTime() // Use timestamp as key for proper sorting
     
     if (!periodMap.has(periodKey)) {
       periodMap.set(periodKey, {
@@ -77,6 +79,26 @@ export function generateChartData(entries, recurringTerms) {
 
   // Sort periods chronologically
   const sortedPeriods = Array.from(periodMap.values()).sort((a, b) => a.date - b.date)
+  
+  // If we only have one period, add a baseline period before it (all symptoms at 0)
+  if (sortedPeriods.length === 1) {
+    const onlyPeriod = sortedPeriods[0]
+    const baselineDate = new Date(onlyPeriod.date)
+    
+    // Subtract one week or one month
+    if (timeUnit === 'week') {
+      baselineDate.setDate(baselineDate.getDate() - 7)
+    } else {
+      baselineDate.setMonth(baselineDate.getMonth() - 1)
+    }
+    
+    const baselinePeriod = {
+      date: baselineDate,
+      symptomCounts: new Map() // Empty - all symptoms at 0
+    }
+    
+    sortedPeriods.unshift(baselinePeriod)
+  }
   
   // Get all unique symptoms across all periods
   const allSymptoms = new Set()
