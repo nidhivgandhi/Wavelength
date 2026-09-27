@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import EntryForm from './EntryForm.jsx'
 
@@ -27,21 +27,143 @@ function DeleteButton({ onDelete }) {
   )
 }
 
-// Past symptom entries, newest first. Placeholder styling — swap for the real design.
-//
-// onEdit(entry, { patientInput, inputMethod }) — useEntries().edit.
 export default function EntryList({ entries, loading, onEdit, onDelete }) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
+  const [visibleMonth, setVisibleMonth] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(null)
+  const initialized = useRef(false)
+  const latestEntryId = useRef(null)
+
+  useEffect(() => {
+    if (loading) return
+
+    const latest = entries[0]
+    if (!initialized.current || (latest && latest.id !== latestEntryId.current)) {
+      const date = latest ? new Date(latest.created_at) : new Date()
+      setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1))
+      setSelectedDate(localDateKey(date))
+    }
+    initialized.current = true
+    latestEntryId.current = latest?.id ?? null
+  }, [entries, loading])
+
   if (loading) return <p>{t('loadingEntries')}</p>
-  if (entries.length === 0) return <p style={{ color: '#666' }}>{t('noEntries')}</p>
+
+  const month = visibleMonth || new Date()
+  const monthYear = month.getFullYear()
+  const monthIndex = month.getMonth()
+  const firstWeekday = new Date(monthYear, monthIndex, 1).getDay()
+  const daysInMonth = new Date(monthYear, monthIndex + 1, 0).getDate()
+  const cells = Array.from({ length: firstWeekday + daysInMonth }, (_, index) =>
+    index < firstWeekday ? null : index - firstWeekday + 1,
+  )
+  const entryCounts = new Map()
+  for (const entry of entries) {
+    const key = localDateKey(new Date(entry.created_at))
+    entryCounts.set(key, (entryCounts.get(key) || 0) + 1)
+  }
+  const selectedEntries = selectedDate
+    ? entries.filter((entry) => localDateKey(new Date(entry.created_at)) === selectedDate)
+    : []
+  const weekdays = Array.from({ length: 7 }, (_, index) =>
+    new Date(2023, 0, 1 + index).toLocaleDateString(locale, { weekday: 'short' }),
+  )
+
+  function changeMonth(amount) {
+    setVisibleMonth(new Date(monthYear, monthIndex + amount, 1))
+    setSelectedDate(null)
+  }
 
   return (
-    <ul style={{ listStyle: 'none', padding: 0 }}>
-      {entries.map((entry) => (
-        <EntryItem key={entry.id} entry={entry} onEdit={onEdit} onDelete={onDelete} />
-      ))}
-    </ul>
+    <div className="entry-calendar">
+      <div className="calendar-month-header">
+        <button
+          aria-label={t('previousMonth')}
+          className="calendar-month-button"
+          onClick={() => changeMonth(-1)}
+          type="button"
+        >
+          ‹
+        </button>
+        <h3 aria-live="polite">
+          {month.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
+        </h3>
+        <button
+          aria-label={t('nextMonth')}
+          className="calendar-month-button"
+          onClick={() => changeMonth(1)}
+          type="button"
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="calendar-grid" role="grid" aria-label={t('pastEntries')}>
+        {weekdays.map((weekday, index) => (
+          <span className="calendar-weekday" key={`${weekday}-${index}`} role="columnheader">
+            {weekday}
+          </span>
+        ))}
+        {cells.map((day, index) => {
+          if (day === null) return <span aria-hidden="true" className="calendar-empty" key={`empty-${index}`} />
+
+          const date = new Date(monthYear, monthIndex, day)
+          const key = localDateKey(date)
+          const count = entryCounts.get(key) || 0
+          const dateLabel = date.toLocaleDateString(locale, { dateStyle: 'full' })
+          const className = [
+            'calendar-day',
+            count > 0 && 'has-entries',
+            selectedDate === key && 'selected',
+            key === localDateKey(new Date()) && 'today',
+          ].filter(Boolean).join(' ')
+
+          return (
+            <button
+              aria-label={count > 0 ? t('calendarDateEntries', { date: dateLabel, count }) : dateLabel}
+              aria-pressed={selectedDate === key}
+              className={className}
+              key={key}
+              onClick={() => setSelectedDate(key)}
+              type="button"
+            >
+              <span>{day}</span>
+              {count > 0 && <span aria-hidden="true" className="calendar-dot" />}
+            </button>
+          )
+        })}
+      </div>
+
+      <section aria-live="polite" className="calendar-day-entries">
+        {selectedDate ? (
+          <>
+            <div className="section-heading">
+              <h3>{new Date(`${selectedDate}T00:00:00`).toLocaleDateString(locale, { dateStyle: 'full' })}</h3>
+              <span>{t('entryCount', { count: selectedEntries.length })}</span>
+            </div>
+            {selectedEntries.length > 0 ? (
+              <ul className="entry-list">
+                {selectedEntries.map((entry) => (
+                  <EntryItem key={entry.id} entry={entry} onEdit={onEdit} onDelete={onDelete} />
+                ))}
+              </ul>
+            ) : (
+              <p className="calendar-empty-message">{t('noEntriesOnDate')}</p>
+            )}
+          </>
+        ) : (
+          <p className="calendar-empty-message">{t('selectCalendarDate')}</p>
+        )}
+      </section>
+    </div>
   )
+}
+
+function localDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 // /api/translate answers too-vague input with a "more detail needed" phrasing

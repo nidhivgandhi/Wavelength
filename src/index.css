@@ -294,7 +294,7 @@ li + li {
   display: grid;
   gap: 1rem;
   margin: 0 auto;
-  width: min(100%, 860px);
+  width: min(100%, 1180px);
   padding: clamp(1rem, 3vw, 2rem);
 }
 
@@ -363,6 +363,128 @@ li + li {
   background: #fffdf7;
   padding: 1rem;
   box-shadow: 0 14px 34px rgba(57, 67, 53, 0.06);
+}
+
+.log-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.entry-calendar {
+  display: grid;
+  gap: 1rem;
+}
+
+.calendar-month-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-month-header h3 {
+  color: #17211b;
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+.calendar-month-button {
+  display: grid;
+  width: 44px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #dedccf;
+  border-radius: 8px;
+  background: #fffdf7;
+  color: #284237;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.calendar-month-button:hover {
+  background: #edf5f1;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.calendar-weekday {
+  padding: 0.35rem 0;
+  color: #647066;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.calendar-empty,
+.calendar-day {
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.calendar-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #26352b;
+  font-weight: 650;
+}
+
+.calendar-day:hover {
+  border-color: #cfd8d1;
+  background: #f2f7f3;
+}
+
+.calendar-day.selected,
+.calendar-day.selected:hover {
+  border-color: #7950a1;
+  background: #f1eafa;
+  color: #4f306e;
+}
+
+.calendar-day.today {
+  box-shadow: inset 0 0 0 1px #8bad9a;
+}
+
+.calendar-dot {
+  position: absolute;
+  bottom: 0.3rem;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7c3aed;
+}
+
+.calendar-day-entries {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid #dedccf;
+  padding-top: 1rem;
+}
+
+.calendar-day-entries .section-heading h3 {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.entry-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-empty-message {
+  color: #647066;
 }
 
 .analysis-view {
@@ -1121,6 +1243,12 @@ input[type="range"] {
 
   .tip-panel {
     position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .log-workspace {
+    grid-template-columns: 1fr;
   }
 }
 

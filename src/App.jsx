@@ -420,7 +420,7 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
       {activeView === 'analysis' ? (
         <AnalysisView entries={entries} loading={loading} />
       ) : (
-        <>
+        <div className="log-workspace">
           <section className="entry-panel">
             <EntryForm onSubmit={handleSubmit} submitLabel={t('completeLog')} busyLabel={t('saving')} resetAfterSubmit />
 
@@ -443,7 +443,7 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
             <h2>{t('pastEntries')}</h2>
             <EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} />
           </section>
-        </>
+        </div>
       )}
     </main>
   )
