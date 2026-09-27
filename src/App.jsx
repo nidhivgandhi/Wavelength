@@ -245,29 +245,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
       <Toast toast={toast} onDismiss={onToastDismiss} />
       <section className="auth-stage">
         <aside className="auth-visual" aria-hidden="true">
-          <div>
-            <p className="eyebrow">Wavelength</p>
-            <h1>Track symptoms with context, not guesswork.</h1>
-            <p>Build a clean timeline, surface patterns, and bring a clearer visit brief into the room.</p>
-          </div>
-          <div className="product-preview">
-            <div className="preview-topline">
-              <span>Today</span>
-              <strong>Symptom pattern</strong>
-            </div>
-            <div className="preview-chart">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-            <div className="preview-summary">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
+          <img className="auth-visual-image" src="/login-left-panel.png" alt="" />
         </aside>
 
         <section className="auth-panel">
