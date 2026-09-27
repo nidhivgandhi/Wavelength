@@ -1758,3 +1758,64 @@ input[type="range"] {
 .terms-dialog-actions { display:flex; justify-content:flex-end; padding:1rem 1.7rem; border-top:1px solid #f0e6ed; }
 .terms-dialog-actions .dashboard-save-button { flex:0 0 120px; }
 @media(max-width:560px) { .terms-dialog { max-height:90vh; border-radius:18px; } .terms-dialog-heading,.terms-content { padding-right:1.1rem; padding-left:1.1rem; } .terms-dialog-actions { padding-right:1.1rem; padding-left:1.1rem; } }
+
+/* Symptom Frequency Chart Styles */
+.symptom-chart-container {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  min-height: 400px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-header h3 {
+  margin: 0;
+  color: #17211b;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.chart-time-unit {
+  color: #647066;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #edf5f1;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+}
+
+.chart-description {
+  margin: 0;
+  color: #647066;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.chart-empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  color: #647066;
+  text-align: center;
+}
+
+.chart-empty-state p {
+  margin: 0;
+}
+
+/* Victory chart container styling */
+.symptom-chart-container svg {
+  border-radius: 8px;
+  background: #fbfaf5;
+  border: 1px solid #ece9dc;
+  max-width: 100%;
+  height: auto;
+}
