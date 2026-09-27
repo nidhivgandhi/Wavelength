@@ -16,6 +16,7 @@ export default function EntryForm({
   submitLabel,
   busyLabel,
   resetAfterSubmit = false,
+  dashboard = false,
 }) {
   const { t, has, speechLocale } = useLanguage()
   const [text, setText] = useState(initialText)
@@ -55,9 +56,11 @@ export default function EntryForm({
   }
 
   return (
-    <form className="entry-form" onSubmit={handleSubmit}>
-      <label htmlFor={textId}>{t('symptomsLabel')}</label>
+    <form className={dashboard ? 'dashboard-entry-form' : 'entry-form'} onSubmit={handleSubmit}>
+      {!dashboard && <label htmlFor={textId}>{t('symptomsLabel')}</label>}
       <textarea
+        className={dashboard ? 'dashboard-textarea' : undefined}
+        aria-label={dashboard ? t('symptomsLabel') : undefined}
         id={textId}
         value={text}
         onChange={(e) => {
@@ -66,26 +69,33 @@ export default function EntryForm({
         }}
         readOnly={speech.listening}
         placeholder={t('symptomsPlaceholder')}
-        rows={4}
+        rows={dashboard ? 7 : 4}
       />
-      <div className="form-actions">
-        <button className="primary-action" type="submit" disabled={busy || !text.trim()}>
-          {busy ? busyLabel ?? t('saving') : submitLabel ?? t('saveChanges')}
-        </button>
-        <VoiceBox
+      <div className={dashboard ? 'dashboard-form-actions' : 'form-actions'}>
+        {dashboard ? (
+          <button className="dashboard-voice-button" type="button" onClick={speech.listening ? speech.stop : startDictation} disabled={busy || !speech.supported || !speechLocale} aria-pressed={speech.listening}>
+            {speech.listening ? t('stopListening') : '◖ Voice recording'}
+          </button>
+        ) : (
+          <button className="primary-action" type="submit" disabled={busy || !text.trim()}>
+            {busy ? busyLabel ?? t('saving') : submitLabel ?? t('saveChanges')}
+          </button>
+        )}
+        {!dashboard && <VoiceBox
           supported={speech.supported}
           languageSupported={Boolean(speechLocale)}
           listening={speech.listening}
           onStart={startDictation}
           onStop={speech.stop}
           disabled={busy}
-        />
+        />}
         {speech.listening && <span className="listening-text">{t('listening')}</span>}
         {onCancel && (
           <button className="ghost-action" type="button" onClick={onCancel} disabled={busy}>
             {t('cancel')}
           </button>
         )}
+        {dashboard && <button className="dashboard-save-button" type="submit" disabled={busy || !text.trim()}>{busy ? busyLabel ?? t('saving') : submitLabel ?? t('saveChanges')}</button>}
       </div>
       {speech.error && (
         <small className="form-error">
