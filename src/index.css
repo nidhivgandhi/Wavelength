@@ -1811,8 +1811,11 @@ input[type="range"] {
   margin: 0;
 }
 
-/* Victory chart container styling */
-.symptom-chart-container svg {
+/* Victory chart container styling.
+   Only the chart's own <svg role="img">: Victory also renders a transparent
+   tooltip <svg> absolutely positioned on top of the chart, and giving that one
+   a background covers the whole chart. */
+.symptom-chart-container svg[role="img"] {
   border-radius: 8px;
   background: #fbfaf5;
   border: 1px solid #ece9dc;
