@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -85,6 +85,25 @@ function Toast({ toast, onDismiss }) {
   )
 }
 
+function TermsDialog({ onClose }) {
+  return (
+    <div className="terms-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <section aria-labelledby="terms-title" aria-modal="true" className="terms-dialog" role="dialog">
+        <div className="terms-dialog-heading"><div><p className="eyebrow">Wavelength</p><h2 id="terms-title">Terms and Conditions</h2><p>Last updated September 26, 2026</p></div><button aria-label="Close terms" className="terms-close" onClick={onClose} type="button">×</button></div>
+        <div className="terms-content">
+          <section><h3>1. What Wavelength does</h3><p>Wavelength helps you record symptoms and organize your own descriptions into language that may be easier to discuss with a healthcare professional. It is an informational journaling tool. It does not provide medical care, diagnose conditions, recommend treatment, or replace advice from a qualified professional. AI generated summaries and phrasing may be incomplete or incorrect; review them before sharing.</p></section>
+          <section><h3>2. Urgent symptoms</h3><p>Do not use Wavelength for emergencies or to decide whether to seek care. The app’s automated urgent symptom checks can miss emergencies or flag a symptom incorrectly. If you may be experiencing an emergency, call your local emergency number or seek urgent medical care.</p></section>
+          <section><h3>3. Your entries and how they are handled</h3><p>You control what you enter. Symptom text may include sensitive health information. To provide translations or summaries, the app sends relevant text to its configured AI service. Entries are kept in this browser and, when configured, synced to the app’s Supabase storage. The app may also use Firebase for account sign-in. Storage and service availability depend on the project configuration.</p></section>
+          <section><h3>4. Voice input</h3><p>If you use voice input, your browser’s speech recognition feature processes audio to create text. The browser or speech recognition provider may process the audio under its own terms and privacy practices. You can use typing instead.</p></section>
+          <section><h3>5. Use of the service</h3><p>Use the service lawfully and only for your own personal journaling. Keep your sign-in details secure, and do not rely on Wavelength as the only copy of information you need. You can review, edit, or delete entries using the app where those controls are available.</p></section>
+          <section><h3>6. Changes and availability</h3><p>Features may change, be interrupted, or become unavailable. We may update these terms as the service changes. Continued use after updated terms are presented means you accept the updated terms.</p></section>
+        </div>
+        <div className="terms-dialog-actions"><button className="dashboard-save-button" onClick={onClose} type="button">Close</button></div>
+      </section>
+    </div>
+  )
+}
+
 function FloatingInput({ autoComplete, disabled, error, id, label, onChange, type = 'text', value }) {
   return (
     <label className={error ? 'floating-field invalid' : 'floating-field'} htmlFor={id}>
@@ -108,6 +127,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
   const [password, setPassword] = useState('')
   const [keepSignedIn, setKeepSignedIn] = useState(true)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const [loadingAction, setLoadingAction] = useState(null)
 
@@ -178,6 +198,10 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
   async function submitGoogle() {
     if (!configured) {
       onToast({ type: 'error', message: 'Firebase is not configured yet.' })
+      return
+    }
+    if (isSignup && !acceptedTerms) {
+      onToast({ type: 'error', message: 'Agree to the Terms and Conditions before continuing.' })
       return
     }
 
@@ -323,7 +347,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
                   onChange={(event) => setAcceptedTerms(event.target.checked)}
                   type="checkbox"
                 />
-                <span>I agree to the terms and privacy notice.</span>
+                <span>I agree to the <button className="terms-inline-link" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setShowTerms(true) }} type="button">Terms and Conditions</button>.</span>
               </label>
             )}
 
@@ -342,6 +366,7 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
           </p>
         </section>
       </section>
+      {showTerms && <TermsDialog onClose={() => setShowTerms(false)} />}
     </main>
   )
 }
@@ -350,9 +375,14 @@ function AuthPage({ toast, onToast, onToastDismiss }) {
 // header just omits the identity line and the sign-out button in that case.
 function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   const { t } = useLanguage()
-  const [activeView, setActiveView] = useState('log')
+  const [activeView, setActiveView] = useState('dashboard')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [intensity, setIntensity] = useState(4)
+  const [indicators, setIndicators] = useState([])
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
+  const profileMenuRef = useRef(null)
   const {
     entries,
     loading,
@@ -365,89 +395,70 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
     migrateDeviceEntries,
   } = useEntries()
 
+  useEffect(() => {
+    function closeMenu(event) {
+      if (!profileMenuRef.current?.contains(event.target)) setProfileMenuOpen(false)
+    }
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') setProfileMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', closeMenu)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeMenu)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
+
   async function handleSubmit(input) {
     setError(null)
     setResult(null)
     const { entry, translateError } = await submit(input)
     if (translateError) setError(t('phrasingFailed', { message: translateError.message }))
     setResult(entry)
+    if (!entry.emergency) setActiveView('analysis')
   }
 
+  const navItems = [
+    ['dashboard', 'Dashboard', '▦'], ['log', t('symptomLog'), '▤'],
+    ['analysis', t('analysis'), '⌁'], ['wellness', 'Wellness Tips', '✦'],
+  ]
+  const title = activeView === 'analysis' ? t('analysisTitle') : activeView === 'log' ? t('symptomLog') : 'Hello, there!'
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const recentEntries = entries.slice(0, 3)
+
   return (
-    <main className="app-page">
+    <main className="dashboard-shell">
       <Toast toast={toast} onDismiss={onToastDismiss} />
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Wavelength</p>
-          <h1>{activeView === 'analysis' ? t('analysisTitle') : t('symptomLog')}</h1>
-          {user && <p>Signed in as {user.email || user.displayName || user.uid}</p>}
-        </div>
-        <div className="app-header-controls">
-          <nav className="view-switch" aria-label={t('mainNavigation')}>
-            <button
-              aria-pressed={activeView === 'log'}
-              className={activeView === 'log' ? 'active' : ''}
-              onClick={() => setActiveView('log')}
-              type="button"
-            >
-              {t('symptomLog')}
-            </button>
-            <button
-              aria-pressed={activeView === 'analysis'}
-              className={activeView === 'analysis' ? 'active' : ''}
-              onClick={() => setActiveView('analysis')}
-              type="button"
-            >
-              {t('analysis')}
-            </button>
-          </nav>
-          <LanguagePicker />
-          {onSignOut && (
-            <button className="secondary-action" onClick={onSignOut} type="button">
-              Sign out
-            </button>
-          )}
-        </div>
-      </header>
-
-      {notice && <p className="notice-text" role="status">{t(`notices.${notice}`)}</p>}
-      {unownedLocalCount > 0 && (
-        <div className="account-migration" role="status">
-          <p>{t('deviceEntriesFound', { count: unownedLocalCount })}</p>
-          <button className="secondary-action" disabled={migrating} onClick={migrateDeviceEntries} type="button">
-            {migrating ? t('movingEntries') : t('moveEntriesToAccount')}
-          </button>
-        </div>
-      )}
-
-      {activeView === 'analysis' ? (
-        <AnalysisView entries={entries} loading={loading} />
-      ) : (
-        <div className="log-workspace">
-          <section className="entry-panel">
-            <EntryForm onSubmit={handleSubmit} submitLabel={t('completeLog')} busyLabel={t('saving')} resetAfterSubmit />
-
-            {error && <p className="error-text">{error}</p>}
-
-            {result?.emergency && (
-              <div className="urgent-card" role="alert">
-                <strong>{t('emergencyTitle')}</strong>
-                <p>{t('emergencyAction')}</p>
-                {result.clinical_phrasing && (
-                  <p lang="en" style={{ margin: '0.5rem 0 0' }}>
-                    {result.clinical_phrasing}
-                  </p>
-                )}
+      <aside className="dashboard-sidebar">
+        <div className="dashboard-brand"><h1>Wavelength</h1><p>Wellness management</p></div>
+        <nav aria-label={t('mainNavigation')} className="dashboard-nav">
+          {navItems.map(([id, label, icon]) => <button key={id} className={`dashboard-nav-link ${activeView === id ? 'active' : ''}`} onClick={() => setActiveView(id)} type="button"><span aria-hidden="true">{icon}</span>{label}</button>)}
+        </nav>
+      </aside>
+      <section className="dashboard-main">
+        <header className="dashboard-header"><div><h2>{title}</h2><p>{activeView === 'dashboard' ? `Today is ${today}` : 'A clearer picture starts with your notes.'}</p></div><div className="dashboard-header-actions" ref={profileMenuRef}><button aria-label="Open profile menu" aria-expanded={profileMenuOpen} aria-haspopup="menu" className="dashboard-avatar" onClick={() => setProfileMenuOpen((open) => !open)} type="button">{(user?.displayName || user?.email || 'W').slice(0, 1).toUpperCase()}</button>{profileMenuOpen && <div className="dashboard-profile-menu" role="menu"><div className="dashboard-profile-info"><strong>{user?.displayName || 'Your profile'}</strong><span>{user?.email || 'Guest account'}</span></div><div className="dashboard-profile-language"><LanguagePicker /></div><button className="dashboard-profile-logout" onClick={() => { setProfileMenuOpen(false); setShowTerms(true) }} role="menuitem" type="button"><span aria-hidden="true">ⓘ</span>Terms and Conditions</button>{onSignOut && <button className="dashboard-profile-logout" onClick={() => { setProfileMenuOpen(false); onSignOut() }} role="menuitem" type="button"><span aria-hidden="true">↪</span>Log out</button>}</div>}</div></header>
+        <div className="dashboard-content">
+          {notice && <p className="notice-text" role="status">{t(`notices.${notice}`)}</p>}
+          {unownedLocalCount > 0 && <div className="account-migration" role="status"><p>{t('deviceEntriesFound', { count: unownedLocalCount })}</p><button className="secondary-action" disabled={migrating} onClick={migrateDeviceEntries} type="button">{migrating ? t('movingEntries') : t('moveEntriesToAccount')}</button></div>}
+          {activeView === 'analysis' ? <AnalysisView entries={entries} loading={loading} /> : activeView === 'log' ? <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3></div><EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section> : activeView === 'dashboard' ? <>
+            <section className="dashboard-card journal-card">
+              <div className="dashboard-card-heading"><h3>Symptom Journal</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">See all history</button></div>
+              <p className="journal-prompt">How are you feeling today?</p>
+              <div><EntryForm onSubmit={handleSubmit} submitLabel="Save & go to analytics" busyLabel={t('saving')} resetAfterSubmit dashboard /></div>
+              <div className="dashboard-extra-controls">
+                <div><label htmlFor="symptom-intensity">Intensity of symptoms <strong>{intensity}</strong></label><input id="symptom-intensity" className="intensity-range" type="range" min="1" max="10" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /><div className="range-labels"><span>Mild</span><span>Severe</span></div></div>
+                <div><span className="quick-label">Quick indicators <small>(not saved yet)</small></span><div className="indicator-list">{['Fatigue', 'Headache', 'Cramps', 'Bloating'].map((item) => <button aria-pressed={indicators.includes(item)} className={indicators.includes(item) ? 'selected' : ''} key={item} onClick={() => setIndicators((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])} type="button">{item}</button>)}</div></div>
               </div>
-            )}
-          </section>
-
-          <section className="entry-panel">
-            <h2>{t('pastEntries')}</h2>
-            <EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} />
-          </section>
+              {error && <p className="error-text">{error}</p>}
+              {result?.emergency && <div className="urgent-card" role="alert"><strong>{t('emergencyTitle')}</strong><p>{t('emergencyAction')}</p>{result.clinical_phrasing && <p lang="en">{result.clinical_phrasing}</p>}</div>}
+            </section>
+            <p className="dashboard-footnote">Your entries are stored securely. Logging regularly can help you notice patterns over time.</p>
+            {recentEntries.length > 0 && <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>Recent entries</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">View history</button></div><EntryList entries={recentEntries} loading={loading} onEdit={edit} onDelete={remove} /></section>}
+          </> : <section className="dashboard-card simple-view"><span className="simple-view-icon">✦</span><h3>Your wellness, at your pace</h3><p>Small, consistent notes can help you prepare for a conversation with your care team.</p></section>}
         </div>
-      )}
+      </section>
+      {showTerms && <TermsDialog onClose={() => setShowTerms(false)} />}
     </main>
   )
 }
