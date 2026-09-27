@@ -12,7 +12,7 @@ fast inference.
 - Frontend: Vite + React (`src/`)
 - Backend: Vercel serverless functions (`api/`)
 - Auth: Firebase Authentication — **optional**, see note below
-- Storage: localStorage with optional Supabase sync
+- Storage: Firebase-account-owned Supabase rows with a local offline cache
 - Model: GroqCloud (OpenAI-compatible endpoint)
 
 Firebase sign-in only activates once a real Firebase project is configured
@@ -129,8 +129,8 @@ Groq's free-tier rate limits are account-specific — check the Limits page at h
 - [x] Strict Groq Structured Outputs + manual-parse fallback
 - [x] Error handling for API failures / rate limits / timeouts / malformed JSON
 - [x] Firebase Auth gate and protected API token verification (dormant until `FIREBASE_PROJECT_ID`/`VITE_FIREBASE_*` are set — see "Firebase setup")
-- [x] localStorage with optional Supabase sync
-- [ ] Run `supabase/add_english_copy.sql` against the live Supabase project (adds `patient_input_en`) — until then, Supabase reads/writes 400 and the app falls back to localStorage automatically
+- [x] Firebase-account-owned Supabase storage with an offline local cache
+- [ ] Add Firebase as a Supabase Third-Party Auth provider and run `supabase/firebase_account_storage.sql` against the live project
 
 ## Environment variables
 
@@ -148,15 +148,18 @@ Groq's free-tier rate limits are account-specific — check the Limits page at h
 | `VITE_SUPABASE_URL` | browser, `.env` | Optional. Blank means the app uses localStorage only. |
 | `VITE_SUPABASE_ANON_KEY` | browser, `.env` | Public anon key; RLS protects the data. Never use the `service_role` key here. |
 
-## Storage (Supabase + localStorage fallback)
+## Account storage (Supabase + Firebase Auth)
 
-1. Create a Supabase project, then run [`supabase/schema.sql`](supabase/schema.sql) in the SQL Editor.
-2. Authentication → Sign In / Providers → enable **Allow anonymous sign-ins**.
-3. Put the project URL (base URL only — no `/rest/v1/`) and anon key in `.env` (see `.env.example`).
+1. In Supabase, open Authentication → Third-Party Auth and add the Firebase project whose ID matches `VITE_FIREBASE_PROJECT_ID`.
+2. For an existing database, run [`supabase/firebase_account_storage.sql`](supabase/firebase_account_storage.sql) in the SQL Editor. For a new database, run [`supabase/schema.sql`](supabase/schema.sql).
+3. Put the Supabase project URL (base URL only — no `/rest/v1/`) and anon key in `.env` (see `.env.example`).
+4. Keep Firebase web config in the `VITE_FIREBASE_*` variables and `FIREBASE_PROJECT_ID` on the server. Never put a Supabase service-role key in the browser.
+
+Supabase requests use the signed-in Firebase user's ID token; `user_id` stores that Firebase UID and RLS checks it against the verified JWT. The Supabase anon key alone cannot read or write symptom rows. If old entries are found only in the device cache, the app offers an explicit **Move entries to this account** action after sign-in.
 
 Check the wiring at http://localhost:5173/test.html while `npm run dev` is running.
 
-- [`src/lib/storage.js`](src/lib/storage.js) — `createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`. Writes land in localStorage first, then Supabase; anything that fails to upload stays `synced: false` and is pushed by `syncPending()`.
+- [`src/lib/storage.js`](src/lib/storage.js) — `createEntry`, `saveEntry`, `listEntries`, `deleteEntry`, `syncPending`. Supabase rows are owned by the signed-in Firebase UID; failed/offline writes remain cached with `synced: false` and are retried by `syncPending()`.
 - [`src/lib/intake.js`](src/lib/intake.js) — `submitIntake` / `updateIntake`: translate the symptom text, then save. The entry is saved even if translation fails.
 - [`src/hooks/useEntries.js`](src/hooks/useEntries.js) — React hook: `{ entries, loading, notice, submit, edit, remove }`. Use this from any UI. `submit({ patientInput, inputMethod })` / `edit(entry, { patientInput, inputMethod })`; editing re-translates when the text changes.
 - [`src/components/EntryForm.jsx`](src/components/EntryForm.jsx) / [`EntryList.jsx`](src/components/EntryList.jsx) — symptom text box + Complete log / Click to speak buttons (also used for editing) and the past-entries list (text + clinical phrasing). Placeholder styling.
@@ -179,6 +182,6 @@ A picker in the header switches the app's buttons/labels **and** the speech-reco
 - **Review:** all non-English text is machine-drafted. Have native speakers check it — especially `emergencyTitle` / `emergencyAction`.
 - Components get text via `const { t, speechLocale } = useLanguage()` (`src/i18n/LanguageContext.jsx`); the app must be wrapped in `<LanguageProvider>` (done in `main.jsx`).
 - Patients can type/speak in any of these languages; `/api/translate` returns the clinical phrasing in **English** (checked with Spanish and Chinese input), which is what the clinician reads.
-- **English copy:** when the UI language isn't English, each entry's words are also translated to English via `POST /api/translate-english` (`{ text }` → `{ english_text, emergency }`, [`api/translate-english.js`](api/translate-english.js)) and saved as `patient_input_en` — run [`supabase/add_english_copy.sql`](supabase/add_english_copy.sql) once. Entries show the original plus "In English: …".
+- **English copy:** when the UI language isn't English, each entry's words are also translated to English via `POST /api/translate-english` (`{ text }` → `{ english_text, emergency }`, [`api/translate-english.js`](api/translate-english.js)) and saved as `patient_input_en`. The column is created by [`supabase/schema.sql`](supabase/schema.sql) or [`supabase/firebase_account_storage.sql`](supabase/firebase_account_storage.sql); [`supabase/add_english_copy.sql`](supabase/add_english_copy.sql) is the legacy standalone migration. Entries show the original plus "In English: …".
 - **Emergency check for other languages:** `api/lib/emergencyCheck.js` only matches English phrases, so on its own "Tengo dolor de pecho y no puedo respirar" / "我胸口疼，喘不过气来" return `emergency: false` from `/api/translate`. `/api/translate-english` runs the same check on the English copy, and the app shows the urgent-care alert if either flags it. This depends on the model's translation, so native-language patterns in `emergencyCheck.js` would still be a good addition.
 - **Low-detail hint:** when the clinical phrasing says there isn't enough detail, the entry shows what to add (the API's follow-up question in English; a translated generic hint otherwise).

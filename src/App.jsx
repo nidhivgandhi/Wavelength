@@ -350,7 +350,17 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   const [activeView, setActiveView] = useState('log')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-  const { entries, loading, notice, submit, edit, remove } = useEntries()
+  const {
+    entries,
+    loading,
+    notice,
+    unownedLocalCount,
+    migrating,
+    submit,
+    edit,
+    remove,
+    migrateDeviceEntries,
+  } = useEntries()
 
   async function handleSubmit(input) {
     setError(null)
@@ -397,6 +407,16 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
         </div>
       </header>
 
+      {notice && <p className="notice-text" role="status">{t(`notices.${notice}`)}</p>}
+      {unownedLocalCount > 0 && (
+        <div className="account-migration" role="status">
+          <p>{t('deviceEntriesFound', { count: unownedLocalCount })}</p>
+          <button className="secondary-action" disabled={migrating} onClick={migrateDeviceEntries} type="button">
+            {migrating ? t('movingEntries') : t('moveEntriesToAccount')}
+          </button>
+        </div>
+      )}
+
       {activeView === 'analysis' ? (
         <AnalysisView entries={entries} loading={loading} />
       ) : (
@@ -421,7 +441,6 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
 
           <section className="entry-panel">
             <h2>{t('pastEntries')}</h2>
-            {notice && <p className="notice-text">{t(`notices.${notice}`)}</p>}
             <EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} />
           </section>
         </>

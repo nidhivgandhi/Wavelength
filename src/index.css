@@ -320,6 +320,17 @@ li + li {
   gap: 0.65rem;
 }
 
+.account-migration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-inline-start: 3px solid #2f7c67;
+  background: #edf5f1;
+  padding: 0.8rem 1rem;
+  color: #284237;
+}
+
 .view-switch {
   display: flex;
   gap: 0.25rem;
@@ -1121,6 +1132,11 @@ input[type="range"] {
 
   .app-header-controls {
     justify-content: flex-start;
+  }
+
+  .account-migration {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .view-switch {

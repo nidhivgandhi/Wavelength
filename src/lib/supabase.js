@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { auth, isFirebaseConfigured } from './firebase.js'
 
 // The anon key is safe to ship to the browser — row-level security in
 // supabase/schema.sql is what protects the data. Never put the service_role
@@ -7,7 +8,15 @@ const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // null when env vars are missing -> the app runs on localStorage only.
-export const supabase = url && anonKey ? createClient(url, anonKey) : null
+export const supabase = url && anonKey
+  ? createClient(
+      url,
+      anonKey,
+      isFirebaseConfigured()
+        ? { accessToken: async () => auth.currentUser?.getIdToken() ?? null }
+        : undefined,
+    )
+  : null
 
 let sessionPromise = null
 
@@ -15,6 +24,11 @@ let sessionPromise = null
 // Concurrent callers share one in-flight sign-in.
 export function ensureSession() {
   if (!supabase) return Promise.resolve(null)
+  if (isFirebaseConfigured()) {
+    const user = auth.currentUser
+    if (!user) return Promise.reject(new Error('Sign in before accessing account storage.'))
+    return user.getIdToken().then(() => ({ user: { id: user.uid } }))
+  }
   if (!sessionPromise) {
     sessionPromise = (async () => {
       const { data, error } = await supabase.auth.getSession()
