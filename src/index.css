@@ -1727,10 +1727,15 @@ input[type="range"] {
 }
 
 .dashboard-header-actions { z-index:35; }
+/* The profile menu drops down from the header over .dashboard-content. Both were z-index:1,
+   so the later content painted on top of the menu; lift the whole header above it. */
+.dashboard-header { z-index:5; }
 .dashboard-avatar { padding:0; cursor:pointer; }
 .dashboard-avatar:hover,.dashboard-avatar:focus-visible { background:rgba(255,255,255,.26); outline:2px solid rgba(255,255,255,.65); outline-offset:2px; }
 .dashboard-profile-menu { position:absolute; top:calc(100% + .7rem); right:0; display:grid; width:min(300px,calc(100vw - 2rem)); gap:.75rem; padding:1rem; border:1px solid #f0e6ed; border-radius:18px; background:#fff; box-shadow:0 16px 42px rgba(54,32,52,.2); color:#563c50; text-align:left; }
-.dashboard-profile-info { display:grid; gap:.2rem; padding:0 .25rem .7rem; border-bottom:1px solid #f0e6ed; }
+.dashboard-profile-info { display:grid; gap:.2rem; padding:0 .25rem .7rem; padding-inline-end:2.25rem; border-bottom:1px solid #f0e6ed; }
+.dashboard-profile-close { position:absolute; top:.65rem; inset-inline-end:.65rem; display:grid; width:32px; height:32px; place-items:center; padding:0; border:0; border-radius:50%; background:transparent; color:#8d7788; font-size:1.25rem; line-height:1; cursor:pointer; }
+.dashboard-profile-close:hover,.dashboard-profile-close:focus-visible { background:#fdf4f9; color:var(--dash-purple); outline:none; }
 .dashboard-profile-info strong { color:var(--dash-purple); font-size:.9rem; }
 .dashboard-profile-info span { color:#8d7788; font-size:.78rem; overflow-wrap:anywhere; }
 .dashboard-profile-language { padding:.1rem .25rem .65rem; border-bottom:1px solid #f0e6ed; }
