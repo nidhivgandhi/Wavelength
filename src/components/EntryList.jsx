@@ -18,9 +18,10 @@ function DeleteButton({ onDelete }) {
 
   return (
     <button
+      className={confirming ? 'danger-action action-sm' : 'ghost-action action-sm'}
       onClick={() => (confirming ? onDelete() : setConfirming(true))}
       onBlur={() => setConfirming(false)}
-      style={confirming ? { color: 'white', background: 'crimson', borderColor: 'crimson' } : undefined}
+      type="button"
     >
       {confirming ? t('confirmDelete') : t('delete')}
     </button>
@@ -185,50 +186,45 @@ function EntryItem({ entry, onEdit, onDelete }) {
     if (translateError) setError(t('phrasingFailed', { message: translateError.message }))
   }
 
-  const small = { fontSize: 13, color: '#666' }
-
   return (
-    <li style={{ border: '1px solid #ddd', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', ...small }}>
+    <li className="entry-card">
+      <div className="entry-meta">
         <span>{new Date(entry.created_at).toLocaleString(locale)}</span>
         <span>· {entry.input_method === 'voice' ? t('spoken') : t('typed')}</span>
-        {entry.emergency && <span style={{ color: 'crimson', fontWeight: 'bold' }}>· {t('urgent')}</span>}
+        {entry.emergency && <span className="entry-urgent">· {t('urgent')}</span>}
         {!entry.synced && <span>· {t('deviceOnly')}</span>}
         {!editing && (
-          <span style={{ marginInlineStart: 'auto', display: 'flex', gap: 4 }}>
-            <button onClick={() => setEditing(true)}>{t('edit')}</button>
+          <span className="entry-actions">
+            <button className="secondary-action action-sm" onClick={() => setEditing(true)} type="button">
+              {t('edit')}
+            </button>
             <DeleteButton onDelete={() => onDelete(entry.id)} />
           </span>
         )}
       </div>
 
       {editing ? (
-        <div style={{ marginTop: '0.75rem' }}>
-          <EntryForm
-            initialText={entry.patient_input}
-            onSubmit={save}
-            onCancel={() => setEditing(false)}
-          />
-        </div>
+        <EntryForm initialText={entry.patient_input} onSubmit={save} onCancel={() => setEditing(false)} />
       ) : (
         <>
-          <p style={{ margin: '0.5rem 0' }}>{entry.patient_input}</p>
+          <p className="entry-text">{entry.patient_input}</p>
           {entry.patient_input_en && entry.patient_input_en.trim() !== entry.patient_input.trim() && (
-            <p style={{ margin: '0 0 0.5rem', fontSize: 14 }}>
-              <span style={{ color: '#666' }}>{t('inEnglish')}:</span> <span lang="en">{entry.patient_input_en}</span>
+            <p className="entry-detail">
+              <span className="entry-detail-label">{t('inEnglish')}:</span> <span lang="en">{entry.patient_input_en}</span>
             </p>
           )}
 
-          {error && <p style={{ color: 'crimson', fontSize: 14 }}>{error}</p>}
+          {error && <p className="form-error">{error}</p>}
 
           {entry.clinical_phrasing && (
-            <p style={{ margin: 0, fontSize: 14 }}>
-              <strong>{t('clinicalPhrasing')}:</strong> <span lang="en">{entry.clinical_phrasing}</span>
+            <p className="entry-detail">
+              <span className="entry-detail-label">{t('clinicalPhrasing')}:</span>{' '}
+              <span lang="en">{entry.clinical_phrasing}</span>
             </p>
           )}
 
           {isLowDetail(entry) && (
-            <p style={{ margin: '0.5rem 0 0', fontSize: 14, color: '#b35c00' }}>
+            <p className="entry-hint">
               {language === 'en' && entry.follow_up_question
                 ? t('lowDetailQuestion', { question: entry.follow_up_question })
                 : t('lowDetailHint')}
