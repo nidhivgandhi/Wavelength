@@ -21,6 +21,9 @@ import {
   setAuthPersistence,
 } from './lib/firebase.js'
 
+//import { exportVisitBriefToPDF } from './lib/exportVisitBrief.js'
+// THIS LINE IS NOT WORKING IDK WHY IT IS ALWAYS A COMMENT
+
 // Sign-in is opt-in: it only gates the app once a real Firebase project is
 // configured (see src/lib/firebase.js / README "Firebase auth" section). With
 // no Firebase env vars set, isFirebaseConfigured() is false and App() skips
