@@ -434,6 +434,7 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   ]
   const title = activeView === 'analysis' ? t('analysisTitle') : activeView === 'log' ? t('symptomLog') : 'Hello, there!'
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const recentEntries = entries.slice(0, 3)
 
   return (
     <main className="dashboard-shell">
