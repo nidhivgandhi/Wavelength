@@ -420,7 +420,6 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   ]
   const title = activeView === 'analysis' ? t('analysisTitle') : activeView === 'log' ? t('symptomLog') : 'Hello, there!'
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const recentEntries = entries.slice(0, 3)
 
   return (
     <main className="dashboard-shell">
@@ -445,7 +444,7 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
               {result?.emergency && <div className="urgent-card" role="alert"><strong>{t('emergencyTitle')}</strong><p>{t('emergencyAction')}</p>{result.clinical_phrasing && <p lang="en">{result.clinical_phrasing}</p>}</div>}
             </section>
             <p className="dashboard-footnote">Your entries are stored securely. Logging regularly can help you notice patterns over time.</p>
-            {recentEntries.length > 0 && <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>Recent entries</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">View history</button></div><EntryList entries={recentEntries} loading={loading} onEdit={edit} onDelete={remove} /></section>}
+            {entries.length > 0 && <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">View history</button></div><EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section>}
           </> : <section className="dashboard-card simple-view"><span className="simple-view-icon">✦</span><h3>Your wellness, at your pace</h3><p>Small, consistent notes can help you prepare for a conversation with your care team.</p></section>}
         </div>
       </section>
