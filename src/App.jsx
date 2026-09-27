@@ -375,8 +375,6 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
   const [activeView, setActiveView] = useState('dashboard')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-  const [intensity, setIntensity] = useState(4)
-  const [indicators, setIndicators] = useState([])
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [showTerms, setShowTerms] = useState(false)
   const profileMenuRef = useRef(null)
@@ -438,15 +436,11 @@ function AuthedApp({ onSignOut, toast, onToastDismiss, user }) {
         <div className="dashboard-content">
           {notice && <p className="notice-text" role="status">{t(`notices.${notice}`)}</p>}
           {unownedLocalCount > 0 && <div className="account-migration" role="status"><p>{t('deviceEntriesFound', { count: unownedLocalCount })}</p><button className="secondary-action" disabled={migrating} onClick={migrateDeviceEntries} type="button">{migrating ? t('movingEntries') : t('moveEntriesToAccount')}</button></div>}
-          {activeView === 'analysis' ? <AnalysisView entries={entries} loading={loading} /> : activeView === 'log' ? <section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3></div><EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section> : activeView === 'dashboard' ? <>
+          {activeView === 'analysis' ? <AnalysisView entries={entries} loading={loading} /> : activeView === 'log' ? <div className="symptom-log-stage"><div aria-hidden="true" className="symptom-log-art" /><section className="dashboard-card history-card"><div className="dashboard-card-heading"><h3>{t('pastEntries')}</h3></div><EntryList entries={entries} loading={loading} onEdit={edit} onDelete={remove} /></section></div> : activeView === 'dashboard' ? <>
             <section className="dashboard-card journal-card">
               <div className="dashboard-card-heading"><h3>Symptom Journal</h3><button className="dashboard-text-action" onClick={() => setActiveView('log')} type="button">See all history</button></div>
               <p className="journal-prompt">How are you feeling today?</p>
               <div><EntryForm onSubmit={handleSubmit} submitLabel="Save & go to analytics" busyLabel={t('saving')} resetAfterSubmit dashboard /></div>
-              <div className="dashboard-extra-controls">
-                <div><label htmlFor="symptom-intensity">Intensity of symptoms <strong>{intensity}</strong></label><input id="symptom-intensity" className="intensity-range" type="range" min="1" max="10" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /><div className="range-labels"><span>Mild</span><span>Severe</span></div></div>
-                <div><span className="quick-label">Quick indicators <small>(not saved yet)</small></span><div className="indicator-list">{['Fatigue', 'Headache', 'Cramps', 'Bloating'].map((item) => <button aria-pressed={indicators.includes(item)} className={indicators.includes(item) ? 'selected' : ''} key={item} onClick={() => setIndicators((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item])} type="button">{item}</button>)}</div></div>
-              </div>
               {error && <p className="error-text">{error}</p>}
               {result?.emergency && <div className="urgent-card" role="alert"><strong>{t('emergencyTitle')}</strong><p>{t('emergencyAction')}</p>{result.clinical_phrasing && <p lang="en">{result.clinical_phrasing}</p>}</div>}
             </section>
