@@ -34,7 +34,7 @@ export function findRecurringEntries(entries) {
   return { terms, matchingEntries, entryWords }
 }
 
-export async function generateEntrySummary(entries, language) {
+export async function generateEntrySummary(entries, language, focusTerms) {
   const headers = { 'Content-Type': 'application/json' }
   if (auth?.currentUser) {
     headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`
@@ -45,6 +45,7 @@ export async function generateEntrySummary(entries, language) {
     headers,
     body: JSON.stringify({
       language,
+      focusTerms,
       entries: entries.map((entry) => ({
         date: entry.created_at,
         text: (entry.patient_input_en || entry.patient_input || '').trim(),

@@ -623,6 +623,13 @@ li + li {
   gap: 1rem;
 }
 
+.analysis-term-picker {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid var(--color-lavender-border);
+  padding-top: 1rem;
+}
+
 .analysis-intro {
   margin-top: 0.45rem;
   color: #647066;
@@ -651,6 +658,21 @@ li + li {
     background-color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+  cursor: pointer;
+}
+
+.recurring-term input {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--color-primary-300);
+}
+
+.recurring-term:focus-within {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .recurring-term:hover:not(.active) {
@@ -706,6 +728,12 @@ li + li {
 
 .analysis-generate {
   justify-self: start;
+}
+
+.analysis-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .generated-summary {
@@ -1779,6 +1807,37 @@ input[type="range"] {
   color: #17211b;
   font-size: 1.15rem;
   font-weight: 700;
+}
+
+.chart-period-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  border: 1px solid #ded1ec;
+  border-radius: 8px;
+  background: #f5effa;
+  padding: 0.2rem;
+}
+
+.chart-period-control button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #684ea6;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.chart-period-control button.active {
+  background: #684ea6;
+  color: #fff;
+}
+
+.chart-period-control button:focus-visible {
+  outline: 2px solid #684ea6;
+  outline-offset: 2px;
 }
 
 .chart-time-unit {

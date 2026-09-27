@@ -2,10 +2,24 @@ import { VictoryChart, VictoryLine, VictoryAxis, VictoryLegend, VictoryTheme, Vi
 import { generateChartData, getSymptomColor } from '../lib/symptomChartData.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 
-export default function SymptomFrequencyChart({ entries, recurringTerms }) {
+const TIME_UNITS = ['day', 'week', 'month', 'year']
+
+export default function SymptomFrequencyChart({ entries, recurringTerms, timeUnit, onTimeUnitChange }) {
   const { t } = useLanguage()
-  
-  const { data: chartData, timeUnit, symptoms } = generateChartData(entries, recurringTerms)
+
+  const { data: chartData, symptoms } = generateChartData(entries, recurringTerms, timeUnit)
+  const timeUnitLabels = {
+    day: t('days'),
+    week: t('weeks'),
+    month: t('months'),
+    year: t('years'),
+  }
+  const axisLabels = {
+    day: t('timeAxisDays'),
+    week: t('timeAxisWeeks'),
+    month: t('timeAxisMonths'),
+    year: t('timeAxisYears'),
+  }
 
   if (chartData.length === 0) {
     return (
@@ -31,9 +45,19 @@ export default function SymptomFrequencyChart({ entries, recurringTerms }) {
     <div className="symptom-chart-container">
       <div className="chart-header">
         <h3>{t('symptomFrequencyChart')}</h3>
-        <span className="chart-time-unit">
-          {t('timeUnit')}: {timeUnit === 'week' ? t('weeks') : t('months')}
-        </span>
+        <div className="chart-period-control" role="group" aria-label={t('timeUnit')}>
+          {TIME_UNITS.map((unit) => (
+            <button
+              aria-pressed={timeUnit === unit}
+              className={timeUnit === unit ? 'active' : ''}
+              key={unit}
+              onClick={() => onTimeUnitChange(unit)}
+              type="button"
+            >
+              {timeUnitLabels[unit]}
+            </button>
+          ))}
+        </div>
       </div>
       
       <VictoryChart
@@ -60,7 +84,7 @@ export default function SymptomFrequencyChart({ entries, recurringTerms }) {
         />
 
         <VictoryAxis
-          label={timeUnit === 'week' ? t('timeAxisWeeks') : t('timeAxisMonths')}
+          label={axisLabels[timeUnit]}
           style={{
             axisLabel: { padding: 40, fontSize: 12, fill: '#647066' },
             tickLabels: { fontSize: 10, padding: 5, angle: -45, textAnchor: 'end', fill: '#647066' }
@@ -98,7 +122,7 @@ export default function SymptomFrequencyChart({ entries, recurringTerms }) {
       <p className="chart-description">
         {t('chartDescription', { 
           count: entries.length,
-          timeUnit: timeUnit === 'week' ? t('weeks') : t('months')
+          timeUnit: timeUnitLabels[timeUnit],
         })}
       </p>
     </div>

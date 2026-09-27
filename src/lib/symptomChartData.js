@@ -1,19 +1,12 @@
 import { wordsInEntry } from './analysis.js'
 
-// Determine if we should use weeks or months based on the time span
-function getTimeUnit(entries) {
-  if (entries.length === 0) return 'week'
-  
-  const dates = entries.map(e => new Date(e.created_at)).sort((a, b) => a - b)
-  const firstDate = dates[0]
-  const lastDate = dates[dates.length - 1]
-  const daysDiff = (lastDate - firstDate) / (1000 * 60 * 60 * 24)
-  
-  // Use months if we have 60+ days (roughly 2 months) of data
-  return daysDiff >= 60 ? 'month' : 'week'
+function getDayStart(date) {
+  const day = new Date(date)
+  day.setHours(0, 0, 0, 0)
+  return day
 }
 
-// Get the start of the week for a given date (Sunday)
+// Weeks begin on Sunday.
 function getWeekStart(date) {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
@@ -29,23 +22,35 @@ function getMonthStart(date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
 }
 
+function getYearStart(date) {
+  const d = new Date(date)
+  return new Date(d.getFullYear(), 0, 1)
+}
+
 // Format a date for display based on time unit
 function formatPeriod(date, timeUnit) {
+  if (timeUnit === 'day') {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
   if (timeUnit === 'month') {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   }
-  // For weeks, show the start date
+  if (timeUnit === 'year') return String(date.getFullYear())
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // Generate chart data from entries
-export function generateChartData(entries, recurringTerms) {
+export function generateChartData(entries, recurringTerms, timeUnit = 'week') {
   if (entries.length === 0 || recurringTerms.length === 0) {
-    return { data: [], timeUnit: 'week', symptoms: [] }
+    return { data: [], timeUnit, symptoms: [] }
   }
 
-  const timeUnit = getTimeUnit(entries)
-  const periodStart = timeUnit === 'month' ? getMonthStart : getWeekStart
+  const periodStart = {
+    day: getDayStart,
+    week: getWeekStart,
+    month: getMonthStart,
+    year: getYearStart,
+  }[timeUnit] || getWeekStart
   
   // Map each entry to its time period and extract symptoms
   const periodMap = new Map() // period key -> { date, symptomCounts: Map(symptom -> count) }
@@ -85,12 +90,10 @@ export function generateChartData(entries, recurringTerms) {
     const onlyPeriod = sortedPeriods[0]
     const baselineDate = new Date(onlyPeriod.date)
     
-    // Subtract one week or one month
-    if (timeUnit === 'week') {
-      baselineDate.setDate(baselineDate.getDate() - 7)
-    } else {
-      baselineDate.setMonth(baselineDate.getMonth() - 1)
-    }
+    if (timeUnit === 'day') baselineDate.setDate(baselineDate.getDate() - 1)
+    else if (timeUnit === 'week') baselineDate.setDate(baselineDate.getDate() - 7)
+    else if (timeUnit === 'month') baselineDate.setMonth(baselineDate.getMonth() - 1)
+    else baselineDate.setFullYear(baselineDate.getFullYear() - 1)
     
     const baselinePeriod = {
       date: baselineDate,
